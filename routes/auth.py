@@ -97,6 +97,8 @@ def api_captcha():
     img.save(buf, format='PNG')
     buf.seek(0)
     return buf.getvalue(), 200, {'Content-Type': 'image/png', 'Cache-Control': 'no-cache'}
+
+@auth_bp.route("/api/send-code", methods=["POST"])
 def api_send_code():
     """
     发送验证码（手机或邮箱）

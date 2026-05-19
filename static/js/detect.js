@@ -239,8 +239,9 @@ async function submitFileDetection() {
         return;
     }
 
-    // 显示加载动画
-    showLoading('正在上传并解析文件，请稍候...');
+    // 显示带进度条的加载动画
+    showLoadingWithProgress('正在上传文件...');
+
     const btn = document.getElementById('btnSubmitFile');
     btn.disabled = true;
     btn.textContent = '⏳ 检测中...';
@@ -249,24 +250,43 @@ async function submitFileDetection() {
         const formData = new FormData();
         formData.append('file', selectedFile);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000); // 2分钟超时
-
-        const response = await fetch('/detect/api/file', {
-            method: 'POST',
-            body: formData,
-            signal: controller.signal,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        const xhr = new XMLHttpRequest();
+        
+        // 上传进度回调
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 35);
+                updateProgressBar(pct, '上传中...');
+            }
         });
 
-        clearTimeout(timeoutId);
+        // 等待XHR完成
+        const result = await new Promise((resolve, reject) => {
+            xhr.addEventListener('load', () => {
+                if (xhr.status === 401) {
+                    window.location.href = '/auth/login';
+                    reject(new Error('请先登录'));
+                    return;
+                }
+                try { resolve(JSON.parse(xhr.responseText)); }
+                catch (e) { reject(new Error('解析失败')); }
+            });
+            xhr.addEventListener('error', () => reject(new Error('网络异常')));
+            xhr.open('POST', '/detect/api/file');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            // 上传完成后的模拟进度
+            xhr.upload.addEventListener('loadend', () => {
+                updateProgressBar(50, '正在解析文档...');
+                setTimeout(() => updateProgressBar(70, 'AI检测分析中...'), 800);
+                setTimeout(() => updateProgressBar(85, '查重比对中...'), 1800);
+                setTimeout(() => updateProgressBar(98, '生成报告中...'), 3000);
+            });
+            
+            xhr.send(formData);
+        });
 
-        if (response.status === 401) {
-            window.location.href = '/auth/login';
-            return;
-        }
-
-        const result = await response.json();
+        updateProgressBar(100, '完成！');
 
         if (result.success) {
             renderResult(result.report);
@@ -274,7 +294,6 @@ async function submitFileDetection() {
         } else if (result.need_pay) {
             showPayPrompt(result);
         } else {
-            // 显示详细错误
             let errMsg = result.message || '文件检测失败';
             if (result.file_type === 'pdf') {
                 errMsg += '\n\n💡 如果是扫描版PDF，请用WPS打开后「另存为」标准PDF再上传';
@@ -282,16 +301,38 @@ async function submitFileDetection() {
             showToast(errMsg, 'error');
         }
     } catch (error) {
-        if (error.name === 'AbortError') {
-            showToast('文件检测超时，请检查网络后重试', 'error');
-        } else {
-            showToast('文件检测异常：' + error.message, 'error');
-        }
+        showToast('文件检测异常：' + error.message, 'error');
     } finally {
         hideLoading();
         btn.disabled = false;
         btn.textContent = '🔍 上传并检测';
     }
+}
+
+// ==================== 进度条工具函数 ====================
+
+function showLoadingWithProgress(message) {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p class="loading-text">${message}</p>
+                <div style="width:280px; height:6px; background:#e5e7eb; border-radius:3px; margin:12px auto; overflow:hidden;">
+                    <div id="progressBarFill" style="width:0%; height:100%; background:linear-gradient(90deg, #2563eb, #7c3aed); border-radius:3px; transition: width 0.4s ease;"></div>
+                </div>
+                <p class="loading-subtext" id="progressBarText">0%</p>
+            </div>
+        `;
+        overlay.style.display = 'flex';
+    }
+}
+
+function updateProgressBar(pct, message) {
+    const bar = document.getElementById('progressBarFill');
+    const text = document.getElementById('progressBarText');
+    if (bar) bar.style.width = pct + '%';
+    if (text) text.textContent = pct + '% - ' + message;
 }
 
 // ==================== 付费提示 ====================

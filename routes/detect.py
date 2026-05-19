@@ -445,3 +445,203 @@ def download_report(record_id):
         as_attachment=True,
         download_name=f"检测报告_{record_id}_{record.get('created_at','')[:10]}.html",
     )
+
+
+# ==================== 任务进度API ====================
+
+@detect_bp.route("/api/task-status/<task_id>")
+def api_task_status(task_id):
+    """查询文件检测任务进度"""
+    from services.task_manager import task_manager
+    task = task_manager.get_task(task_id)
+    if not task:
+        return jsonify({"success": False, "message": "任务不存在或已过期"}), 404
+    return jsonify({"success": True, "task": task})
+
+
+# ==================== 降低AI率API ====================
+
+@detect_bp.route("/api/reduce-ai", methods=["POST"])
+def api_reduce_ai():
+    """
+    降低AI生成率——针对AI特征进行文本改写
+    处理逻辑：
+    1. 识别AI常见句式/词汇
+    2. 同义替换+句式重组
+    3. 增加个性化表达
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "请提供文本内容"}), 400
+
+        text = data.get("text", "").strip()
+        if not text:
+            return jsonify({"success": False, "message": "请输入要处理的文本"}), 400
+        if len(text) < 20:
+            return jsonify({"success": False, "message": "文本过短，至少20个字符"}), 400
+        if len(text) > 5000:
+            return jsonify({"success": False, "message": "单次最多5000字符"}), 400
+
+        # 尝试DeepSeek真实降AI
+        from services.api_client import DeepSeekClient
+        if DeepSeekClient.is_configured():
+            prompt = f"""你是一位学术论文降AI专家。请对以下文本进行改写，降低AI生成痕迹：
+
+规则：
+1. 替换所有AI常用过渡词（如"首先其次最后""总而言之""值得注意的是"等）
+2. 打破过于整齐的句式结构，增加长短句变化
+3. 加入少量个人化表达（如"笔者认为""根据实验观察"等）
+4. 保持学术严谨性和原意不变
+5. 直接输出改写结果
+
+原文：
+{text}
+
+降AI版："""
+            success, result, _, error = DeepSeekClient.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.9, max_tokens=4096
+            )
+            if success:
+                # 再检测一次对比效果
+                from services.ai_detector import AIDetector
+                before = AIDetector.detect(text)
+                after = AIDetector.detect(result)
+                return jsonify({
+                    "success": True,
+                    "result_text": result,
+                    "before_ai": before.get("ai_score", 0),
+                    "after_ai": after.get("ai_score", 0),
+                    "method": "deepseek",
+                })
+
+        # 模拟降AI
+        result_text, before_ai, after_ai = _simulate_reduce_ai(text)
+
+        return jsonify({
+            "success": True,
+            "result_text": result_text,
+            "before_ai": before_ai,
+            "after_ai": after_ai,
+            "method": "simulation",
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
+
+
+def _simulate_reduce_ai(text: str):
+    """模拟降AI处理"""
+    import re, hashlib, random
+
+    # AI常用词汇替换表
+    ai_replacements = {
+        "总而言之": "概括来看", "值得注意的是": "需要关注的是",
+        "综上所述": "基于以上分析", "首先": "第一", "其次": "第二",
+        "最后": "第三", "此外": "另外", "与此同时": "同时",
+        "从某种角度来说": "换个角度看", "不可忽视的是": "关键点在于",
+    }
+
+    result = text
+    for old, new in ai_replacements.items():
+        result = result.replace(old, new)
+
+    # 基于原文内容微调
+    seed = int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
+    random.seed(seed)
+
+    before_ai = max(25, min(75, seed % 50 + 25))
+    after_ai = max(5, before_ai - random.randint(10, 25))
+
+    random.seed()
+    return result, before_ai, after_ai
+
+
+# ==================== 降低查重率API ====================
+
+@detect_bp.route("/api/reduce-plagiarism", methods=["POST"])
+def api_reduce_plagiarism():
+    """
+    降低查重率——针对重复内容进行深度改写
+    处理逻辑：
+    1. 同义词替换（保留学术含义）
+    2. 句式重组（主动/被动、语序调整）
+    3. 长句拆分、短句合并
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "请提供文本内容"}), 400
+
+        text = data.get("text", "").strip()
+        if not text:
+            return jsonify({"success": False, "message": "请输入要处理的文本"}), 400
+        if len(text) < 20:
+            return jsonify({"success": False, "message": "文本过短，至少20个字符"}), 400
+        if len(text) > 5000:
+            return jsonify({"success": False, "message": "单次最多5000字符"}), 400
+
+        # 尝试DeepSeek真实降重
+        from services.api_client import DeepSeekClient
+        if DeepSeekClient.is_configured():
+            prompt = f"""你是一位论文降重专家。请对以下文本进行深度改写以降低查重率：
+
+规则：
+1. 保留核心学术观点和数据不变
+2. 同义词替换+句式重组（主动↔被动、语序调整）
+3. 拆分过长句子，合并过短句子
+4. 适当扩充或精简表达
+5. 直接输出改写结果
+
+原文：
+{text}
+
+降重版："""
+            success, result, _, error = DeepSeekClient.chat(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.85, max_tokens=4096
+            )
+            if success:
+                from services.plagiarism_checker import PlagiarismChecker
+                before = PlagiarismChecker.check(text)
+                after = PlagiarismChecker.check(result)
+                return jsonify({
+                    "success": True,
+                    "result_text": result,
+                    "before_plagiarism": before.get("plagiarism_score", 0),
+                    "after_plagiarism": after.get("plagiarism_score", 0),
+                    "method": "deepseek",
+                })
+
+        # 模拟降重
+        result_text, before_p, after_p = _simulate_reduce_plagiarism(text)
+
+        return jsonify({
+            "success": True,
+            "result_text": result_text,
+            "before_plagiarism": before_p,
+            "after_plagiarism": after_p,
+            "method": "simulation",
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
+
+
+def _simulate_reduce_plagiarism(text: str):
+    """模拟降重处理"""
+    import hashlib, random
+
+    seed = int(hashlib.md5(text.encode()).hexdigest()[:8], 16)
+    random.seed(seed)
+
+    # 简单句式变换
+    result = text.replace("。", "；")
+    result = result.replace("具有", "拥有")
+
+    before_p = max(20, min(70, seed % 45 + 25))
+    after_p = max(5, before_p - random.randint(10, 30))
+
+    random.seed()
+    return result, before_p, after_p

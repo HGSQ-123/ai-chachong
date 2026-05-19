@@ -189,26 +189,34 @@ class BillingService:
         """
         购买充值额度套餐
         
-        参数:
-            user_id: 用户ID
-            package_index: 套餐索引 (0-4)
+        首充翻倍：第一次充值送等额字数
         """
         packages = config.RECHARGE_PACKAGES
         if package_index < 0 or package_index >= len(packages):
             return {"success": False, "message": "无效的充值套餐"}
         
         pkg = packages[package_index]
-        db.add_credits(user_id, pkg["words"], pkg["amount"])
+        words = pkg["words"]
+        
+        # 首充检测：无任何充值记录 = 首充
+        user = db.get_user_by_id(user_id)
+        is_first = (user.get("balance", 0) if user else 0) == 0 and (user.get("credits", 0) if user else 0) == 0
+        if is_first and pkg["amount"] > 0:
+            words = words * 2  # 首充翻倍
+        
+        db.add_credits(user_id, words, pkg["amount"])
+        desc = f"充值额度: {pkg['label']}" + (" (首充翻倍！)" if is_first else "")
         db.create_billing_record(
             user_id=user_id,
             amount=pkg["amount"],
-            word_count=pkg["words"],
+            word_count=words,
             transaction_type="recharge",
-            description=f"充值额度: {pkg['label']}"
+            description=desc
         )
         return {
             "success": True,
-            "message": f"充值成功！获得{pkg['words']}字额度",
-            "words": pkg["words"],
+            "message": f"充值成功！获得{words}字额度" + (" (首充翻倍！)" if is_first else ""),
+            "words": words,
             "amount": pkg["amount"],
+            "first_recharge": is_first,
         }

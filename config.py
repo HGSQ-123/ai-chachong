@@ -52,12 +52,12 @@ class Config:
     
     # 充值套餐（金额 → 字数）
     RECHARGE_PACKAGES = [
-        {"amount": 0.49,  "words": 1000,   "label": "¥0.49 = 1千字", "badge": "体验"},
-        {"amount": 5.0,   "words": 10000,  "label": "¥5 = 1万字",   "badge": "入门"},
-        {"amount": 10.0,  "words": 20000,  "label": "¥10 = 2万字",  "badge": "实惠"},
-        {"amount": 20.0,  "words": 50000,  "label": "¥20 = 5万字",  "badge": "推荐"},
-        {"amount": 50.0,  "words": 150000, "label": "¥50 = 15万字", "badge": "超值"},
-        {"amount": 100.0, "words": 300000, "label": "¥100 = 30万字","badge": "囤货"},
+        {"amount": 0.49,  "words": 1000,   "label": "0.49 = 1千字",   "badge": "体验"},
+        {"amount": 5.0,   "words": 10200,  "label": "5 = 1.02万字",   "badge": "入门"},
+        {"amount": 10.0,  "words": 20400,  "label": "10 = 2.04万字",  "badge": "实惠"},
+        {"amount": 20.0,  "words": 40800,  "label": "20 = 4.08万字",  "badge": "推荐"},
+        {"amount": 50.0,  "words": 102000, "label": "50 = 10.2万字",  "badge": "超值"},
+        {"amount": 100.0, "words": 204000, "label": "100 = 20.4万字", "badge": "囤货"},
     ]
 
     # ==================== 会员配置 ====================

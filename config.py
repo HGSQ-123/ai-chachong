@@ -62,6 +62,7 @@ class Config:
     # ==================== 会员配置 ====================
     MEMBER_MONTHLY_PRICE = float(os.getenv("MEMBER_MONTHLY_PRICE", 19.9))
     MEMBER_MONTHLY_QUOTA = int(os.getenv("MEMBER_MONTHLY_QUOTA", 50000))
+    MEMBER_FREE_REWRITES = int(os.getenv("MEMBER_FREE_REWRITES", 3))  # 会员每月免费改写次数
 
     # ==================== 第三方API配置 ====================
     # DeepSeek大模型（AI降重改写）- 留空则使用模拟算法

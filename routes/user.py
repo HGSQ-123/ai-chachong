@@ -3,6 +3,7 @@
 """
 
 import json
+import math
 from flask import Blueprint, render_template, request, session, jsonify, redirect, url_for, flash
 from config import config
 from utils.database import db
@@ -281,10 +282,8 @@ def api_pay_callback(channel):
 @user_bp.route("/api/ai-rewrite", methods=["POST"])
 def api_ai_rewrite():
     """
-    AI降重改写接口（DeepSeek驱动）
-    提供一键降重、语句润色、语病修正、句式优化功能
-
-    优先级：DeepSeek真实API > 本地模拟算法
+    AI改写接口（DeepSeek驱动）
+    计费：首次¥2 → 会员每月免费3次 → 后续0.5元/千字
     """
     try:
         data = request.get_json()
@@ -292,64 +291,106 @@ def api_ai_rewrite():
             return jsonify({"success": False, "message": "请提供文本内容"}), 400
 
         text = data.get("text", "").strip()
-        action = data.get("action", "rewrite")  # rewrite/polish/fix/optimize
+        action = data.get("action", "rewrite")
 
         if not text:
             return jsonify({"success": False, "message": "请输入要处理的文本"}), 400
-
         if len(text) < 10:
             return jsonify({"success": False, "message": "文本过短，至少需要10个字符"}), 400
+        if len(text) > config.REDUCE_MAX_CHARS:
+            return jsonify({"success": False, "message": f"单次最多{config.REDUCE_MAX_CHARS}字符"}), 400
 
-        if len(text) > 5000:
-            return jsonify({"success": False, "message": "单次最多处理5000字符"}), 400
+        # ========== 计费 ==========
+        user_id = session.get("user_id")
+        billing_label = ""
+        if not user_id:
+            return jsonify({"success": False, "message": "请先登录", "need_login": True}), 401
 
-        # ---- 优先使用DeepSeek真实API ----
+        user = db.get_user_by_id(user_id)
+        billing_info = _calc_rewrite_cost(user, len(text))
+
+        if billing_info["type"] == "insufficient":
+            return jsonify(billing_info), 402
+
+        # ========== 执行改写 ==========
         from services.api_client import DeepSeekClient
-
         if DeepSeekClient.is_configured():
             success, result_text, suggestions, error = DeepSeekClient.rewrite(text, action)
             if success:
-                # 扣除额度
-                _deduct_rewrite_quota(text)
-
+                _apply_rewrite_billing(user_id, billing_info)
                 return jsonify({
-                    "success": True,
-                    "result_text": result_text,
-                    "suggestions": suggestions,
-                    "action": action,
-                    "method": "deepseek",
+                    "success": True, "result_text": result_text,
+                    "suggestions": suggestions, "action": action,
+                    "method": "deepseek", "billing": billing_info,
                 })
-            else:
-                # DeepSeek调用失败，记录错误并降级
-                print(f"[AI改写] DeepSeek失败: {error}, 降级为模拟算法")
 
-        # ---- 降级：本地模拟算法 ----
         result_text, suggestions = _simulate_ai_rewrite(text, action)
-
-        # 扣除额度
-        _deduct_rewrite_quota(text)
-
+        _apply_rewrite_billing(user_id, billing_info)
         return jsonify({
-            "success": True,
-            "result_text": result_text,
-            "suggestions": suggestions,
-            "action": action,
-            "method": "simulation",
+            "success": True, "result_text": result_text,
+            "suggestions": suggestions, "action": action,
+            "method": "simulation", "billing": billing_info,
         })
 
     except Exception as e:
         return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
 
 
-def _deduct_rewrite_quota(text: str):
-    """AI改写消耗额度（原文字数的10%，象征性扣除）"""
-    from flask import session
-    user_id = session.get("user_id")
-    if user_id:
-        user = db.get_user_by_id(user_id)
-        if user:
-            cost_words = max(1, len(text) // 10)
-            BillingService.deduct_quota(user_id, cost_words)
+def _calc_rewrite_cost(user: dict, char_count: int) -> dict:
+    """计算改写费用"""
+    from datetime import datetime
+    quota = BillingService.get_available_quota(user)
+
+    # 1. 首次改写 ¥2
+    from utils.database import db
+    if db.is_first_reduce_ai(user["id"]) and db.is_first_reduce_plagiarism(user["id"]):
+        return {"type": "first", "cost": 2.0, "label": "首次改写 ¥2", "words": 0}
+
+    # 2. 会员免费改写
+    if quota["is_member"]:
+        reset_str = user.get("member_rewrite_reset") if user else None
+        count = user.get("member_rewrite_count", 0) if user else 0
+        if reset_str:
+            try:
+                from datetime import datetime as dt
+                reset_dt = dt.strptime(reset_str, "%Y-%m-%d")
+                if dt.now().month != reset_dt.month:
+                    count = 0
+            except ValueError:
+                pass
+        if count < config.MEMBER_FREE_REWRITES:
+            return {"type": "member_free", "cost": 0, "label": f"会员免费改写({count+1}/{config.MEMBER_FREE_REWRITES})", "words": 0}
+
+    # 3. 按字数扣费
+    k = math.ceil(char_count / 1000)
+    cost_words = k * 1000
+    total = quota["total_remaining"]
+    if total < cost_words:
+        need = cost_words - total
+        need_k = math.ceil(need / 1000)
+        return {
+            "success": False, "need_recharge": True, "type": "insufficient",
+            "message": f"额度不足，还需{need}字（约¥{need_k * config.CREDIT_PRICE_PER_K:.2f}），请先充值",
+            "available": total, "needed": cost_words,
+        }
+    return {"type": "normal", "cost": round(k * config.REDUCE_PRICE_PER_K, 2), "words": cost_words, "label": f"改写 {k}千字 ¥{round(k * config.REDUCE_PRICE_PER_K, 2)}"}
+
+
+def _apply_rewrite_billing(user_id: int, info: dict):
+    """执行改写计费"""
+    from utils.database import db
+    if info["type"] == "first":
+        db.increment_reduce_ai(user_id)
+        db.increment_reduce_plagiarism(user_id)
+        db.create_billing_record(user_id, 2.0, 0, "rewrite_first", info["label"])
+    elif info["type"] == "member_free":
+        with db.get_connection() as conn:
+            conn.execute("UPDATE users SET member_rewrite_count=member_rewrite_count+1, member_rewrite_reset=? WHERE id=?",
+                        (__import__('datetime').datetime.now().strftime("%Y-%m-%d"), user_id))
+        db.create_billing_record(user_id, 0, 0, "rewrite_member_free", info["label"])
+    elif info["type"] == "normal":
+        db.deduct_credits(user_id, info["words"])
+        db.create_billing_record(user_id, info["cost"], info["words"], "rewrite", info["label"])
 
 
 def _simulate_ai_rewrite(text: str, action: str) -> tuple:

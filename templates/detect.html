@@ -7,6 +7,9 @@
         <div class="section-header">
             <h2 class="section-title">📋 文档检测</h2>
             <p class="section-desc">粘贴文本或上传文件，双重检测AI生成率与重复率</p>
+            <div style="text-align:center; margin-top:8px;">
+                <span style="display:inline-block; background:#dbeafe; color:#1e40af; padding:4px 12px; border-radius:12px; font-size:13px; font-weight:600;">🎉 首次双检测<strong>免费</strong> | 后续0.5元/千字 | 会员¥19.9/月</span>
+            </div>
         </div>
 
         <!-- ==================== 额度提示 ==================== -->
@@ -64,11 +67,11 @@
                     class="form-textarea"
                     placeholder="在此粘贴需要检测的文本内容...&#10;&#10;支持中英文混合内容，系统将自动统计字数并执行AI检测+查重双重分析"
                     rows="12"
-                    maxlength="50000"
+                    maxlength="100000"
                 ></textarea>
                 <div class="textarea-footer">
                     <span class="word-count" id="wordCount">字数：0</span>
-                    <span class="text-limit">单次最多 {{ config.MAX_DETECTION_WORDS }} 字</span>
+                    <span class="text-limit">单次最多100000字 | 首次双检测<strong>免费</strong></span>
                 </div>
             </div>
             <div class="detect-actions">

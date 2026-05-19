@@ -7,6 +7,9 @@
         <div class="section-header">
             <h2 class="section-title">✨ AI辅助工具</h2>
             <p class="section-desc">智能降重、语句润色、语病修正、句式优化 — 全方位提升论文质量</p>
+            <div style="text-align:center; margin-top:8px;">
+                <span style="display:inline-block; background:#fef3c7; color:#92400e; padding:4px 12px; border-radius:12px; font-size:13px; font-weight:600;">💰 首次改写仅<strong>¥2</strong> | 后续0.5元/千字 | 会员每月<strong>免费3次</strong></span>
+            </div>
         </div>
 
         <!-- ==================== 工具选择标签 ==================== -->
@@ -37,10 +40,10 @@
                 <label>📝 输入原文</label>
                 <textarea id="toolInput" class="form-textarea"
                     placeholder="在此粘贴需要处理的文本...&#10;&#10;支持中英文内容，AI将自动识别并优化"
-                    rows="10" maxlength="5000"></textarea>
+                    rows="10" maxlength="100000"></textarea>
                 <div class="textarea-footer">
                     <span class="word-count" id="toolWordCount">字数：0</span>
-                    <span class="text-limit">单次最多5000字</span>
+                    <span class="text-limit">单次最多100000字 | 首次¥2 后续0.5元/千字</span>
                 </div>
                 <button class="btn btn-primary btn-block" onclick="executeTool()" id="btnExecute">
                     🔄 开始处理

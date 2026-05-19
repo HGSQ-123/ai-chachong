@@ -6,7 +6,7 @@ services:
     name: ai-chachong
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     # 免费层配置
     plan: free
     # 环境变量

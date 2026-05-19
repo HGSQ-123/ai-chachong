@@ -2,4 +2,4 @@
 # Render.com 免费部署配置
 # 平台: https://render.com (免费层: 512MB RAM, 每月750小时)
 # ============================================================
-web: python app.py
+web: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120

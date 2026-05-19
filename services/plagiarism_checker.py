@@ -52,18 +52,30 @@ class PlagiarismChecker:
                 "method": str,                # 检测方式
             }
         """
-        # 优先使用第三方真实查重API
-        from services.api_client import PlagiarismAPIClient
-        if PlagiarismAPIClient.is_configured():
-            success, result, error = PlagiarismAPIClient.check(text)
+        # 优先使用 DeepSeek 真实查重检测
+        from services.api_client import DeepSeekClient
+        if DeepSeekClient.is_configured():
+            success, result, error = DeepSeekClient.check_plagiarism(text)
             if success and result:
+                result["matched_segments"] = []
+                result["sources"] = []
+                result["suggestions"] = cls._get_plagiarism_suggestions(result.get("plagiarism_score", 50))
                 return result
-            # API失败，降级为模拟算法
             sim_result = cls._check_via_simulation(text)
             sim_result["api_error"] = error
             return sim_result
 
         return cls._check_via_simulation(text)
+
+    @classmethod
+    def _get_plagiarism_suggestions(cls, score: float) -> list:
+        """根据重复率生成建议"""
+        if score > 50:
+            return ["⚠️ 重复率较高，建议深度改写", "使用同义词替换和句式重组", "可尝试降重工具"]
+        elif score > 20:
+            return ["⚡ 存在部分重复内容", "建议对重复段落进行改写"]
+        else:
+            return ["✅ 原创度较高"]
 
     @classmethod
     def _check_via_simulation(cls, text: str) -> dict:

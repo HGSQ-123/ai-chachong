@@ -57,19 +57,31 @@ class AIDetector:
                 "method": str,            # 检测方式: api/simulation
             }
         """
-        # 优先使用第三方真实API
-        from services.api_client import AIDetectionAPIClient
-        if AIDetectionAPIClient.is_configured():
-            success, result, error = AIDetectionAPIClient.detect(text)
+        # 优先使用 DeepSeek 真实AI检测
+        from services.api_client import DeepSeekClient
+        if DeepSeekClient.is_configured():
+            success, result, error = DeepSeekClient.detect_ai(text)
             if success and result:
+                result["details"] = [{"type": "ai_analysis", "content": result.get("reasoning", "")}]
+                result["suggestions"] = cls._get_suggestions(result.get("ai_score", 50))
                 return result
-            # API失败，降级为模拟算法（附带降级提示）
+            # DeepSeek失败，降级模拟
             sim_result = cls._detect_via_simulation(text)
             sim_result["api_error"] = error
             return sim_result
 
-        # 否则使用内置模拟算法
+        # 使用内置模拟算法
         return cls._detect_via_simulation(text)
+
+    @classmethod
+    def _get_suggestions(cls, ai_score: float) -> list:
+        """根据AI得分生成建议"""
+        if ai_score > 70:
+            return ["⚠️ AI生成概率极高，建议大幅修改", "增加个人观点和具体案例", "使用AI降重工具改写"]
+        elif ai_score > 40:
+            return ["⚡ 部分内容疑似AI生成", "建议增加个人化表达", "可尝试AI降重工具优化"]
+        else:
+            return ["✅ 人工撰写概率较高", "可适当调整句式增加多样性"]
 
 
     @classmethod

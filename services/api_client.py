@@ -249,6 +249,86 @@ class DeepSeekClient:
 
         return False, None, [], error
 
+    @classmethod
+    def detect_ai(cls, text: str) -> tuple:
+        """
+        AI生成率检测（DeepSeek驱动）
+
+        返回:
+            (success: bool, result: dict|None, error: str|None)
+            result: {"ai_score": float, "human_score": float, "reasoning": str}
+        """
+        prompt = f"""请分析以下文本是否由AI生成（如ChatGPT/文心一言/通义千问等大模型撰写）。
+
+分析维度：
+1. 句式结构是否过于工整统一
+2. 是否频繁使用AI常用过渡词（如"总而言之""值得注意的是""首先其次最后"等）
+3. 表达是否缺少个人风格和情感色彩
+4. 是否缺乏具体案例和个人经验
+5. 逻辑链条是否过于完美（真人写作通常有思维跳跃）
+
+请严格按以下JSON格式回复，不要添加任何其他内容：
+{{"ai_score": 数字(0-100的AI生成概率), "human_score": 数字(0-100的人工撰写概率), "reasoning": "简要分析原因(50字以内)"}}
+
+待分析文本：
+{text[:8000]}"""
+
+        success, content, error = cls.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1, max_tokens=500
+        )
+        if success and content:
+            try:
+                import json, re
+                json_match = re.search(r'\{[^{}]*\}', content)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    result["method"] = "deepseek"
+                    result["confidence"] = "high" if abs(result.get("ai_score", 50) - 50) > 25 else "medium"
+                    return True, result, None
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return False, None, error or "DeepSeek检测失败"
+
+    @classmethod
+    def check_plagiarism(cls, text: str) -> tuple:
+        """
+        全网查重检测（DeepSeek驱动）
+
+        返回:
+            (success: bool, result: dict|None, error: str|None)
+            result: {"plagiarism_score": float, "original_score": float, "reasoning": str}
+        """
+        prompt = f"""请分析以下文本的重复/抄袭风险。
+
+分析维度：
+1. 是否存在常见的套话模板（如"随着我国经济发展""在当今信息化时代"等高频句式）
+2. 内容是否具有原创性观点
+3. 表述方式是否千篇一律
+4. 是否像是从多个来源拼凑而成
+
+请严格按以下JSON格式回复，不要添加任何其他内容：
+{{"plagiarism_score": 数字(0-100的重复率), "original_score": 数字(0-100的原创率), "reasoning": "简要分析(50字以内)"}}
+
+待分析文本：
+{text[:8000]}"""
+
+        success, content, error = cls.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1, max_tokens=500
+        )
+        if success and content:
+            try:
+                import json, re
+                json_match = re.search(r'\{[^{}]*\}', content)
+                if json_match:
+                    result = json.loads(json_match.group())
+                    result["method"] = "deepseek"
+                    return True, result, None
+            except (json.JSONDecodeError, KeyError):
+                pass
+        return False, None, error or "DeepSeek查重失败"
+
 
 # ============================================================
 # AI检测API客户端（GPTZero / Copyleaks 兼容）

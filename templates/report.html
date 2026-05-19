@@ -18,9 +18,7 @@
                 </p>
             </div>
             <div class="report-header-right">
-                <a href="{{ url_for('detect.download_report', record_id=record.id) }}" class="btn btn-outline">
-                    📥 下载报告
-                </a>
+                <button class="btn btn-outline" onclick="window.print()">🖨️ 打印报告</button>
                 <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">
                     🔄 新建检测
                 </a>

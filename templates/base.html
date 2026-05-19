@@ -115,5 +115,12 @@
     <!-- ==================== 全局脚本 ==================== -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
+
+    <!-- 护眼模式切换 -->
+    <button class="dark-toggle" onclick="toggleDarkMode()" title="护眼模式">🌙</button>
+    <script>
+    (function(){if(localStorage.getItem('dark-mode')==='1'){document.documentElement.classList.add('dark-mode');document.querySelector('.dark-toggle').textContent='☀️';}})();
+    function toggleDarkMode(){const isDark=document.documentElement.classList.toggle('dark-mode');document.querySelector('.dark-toggle').textContent=isDark?'☀️':'🌙';localStorage.setItem('dark-mode',isDark?'1':'0');}
+    </script>
 </body>
 </html>

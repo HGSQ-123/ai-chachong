@@ -1481,6 +1481,66 @@ img {
 }
 .compare-table tr:hover td { background: var(--bg-light); }
 
+/* ==================== 打印样式 ==================== */
+@media print {
+    .navbar, .footer, .announcement-bar, .flash-container,
+    .nav-actions, .mobile-menu-btn, .report-actions-bottom,
+    .rewrite-cta, .btn, .disclaimer-inline, .hero-actions,
+    .quick-actions, #reduceResult button, #toastContainer {
+        display: none !important;
+    }
+    body { background: white; font-size: 12pt; color: #000; }
+    .container { max-width: 100%; padding: 0; margin: 0; }
+    .report-header, .score-breakdown, .report-section { page-break-inside: avoid; }
+    .score-hero { margin: 20px 0; }
+    .score-circle-large { border: 3px solid #000; }
+    .matched-segment { border: 1px solid #ccc; background: #fff; }
+    a { color: #000; text-decoration: none; }
+}
+
+/* ==================== 护眼模式 ==================== */
+:root.dark-mode {
+    --primary: #60a5fa;
+    --primary-dark: #3b82f6;
+    --primary-light: #1e3a5f;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-light: #334155;
+    --border-color: #334155;
+    --border-light: #1e293b;
+    --shadow: 0 2px 8px rgba(0,0,0,.4);
+}
+.dark-mode .pricing-card { background: var(--bg-secondary); }
+.dark-mode .score-item-card { background: var(--bg-secondary); }
+.dark-mode .matched-segment { background: var(--bg-secondary); }
+.dark-mode .navbar { background: var(--bg-primary); border-color: var(--border-color); }
+.dark-mode .footer { background: var(--bg-primary); }
+.dark-mode .btn-outline { border-color: var(--border-color); color: var(--text-primary); }
+.dark-mode .form-input { background: var(--bg-secondary); color: var(--text-primary); border-color: var(--border-color); }
+.dark-mode input, .dark-mode textarea { background: var(--bg-secondary); color: var(--text-primary); }
+
+/* 护眼模式切换按钮 */
+.dark-toggle {
+    position: fixed; bottom: 20px; right: 20px; z-index: 9999;
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    background: var(--bg-primary); color: var(--text-primary);
+    box-shadow: 0 2px 12px rgba(0,0,0,.2); cursor: pointer;
+    font-size: 20px; display: flex; align-items: center; justify-content: center;
+    transition: all .2s;
+}
+.dark-toggle:hover { transform: scale(1.1); }
+
+/* ==================== 改写对比高亮 ==================== */
+.diff-added { background: #bbf7d0; color: #166534; padding: 1px 3px; border-radius: 2px; }
+.diff-removed { background: #fecaca; color: #991b1b; padding: 1px 3px; border-radius: 2px; text-decoration: line-through; }
+.diff-legend { display:flex; gap:16px; font-size:13px; margin-bottom:8px; }
+
 /* ==================== 错误页面 ==================== */
 .error-page {
     text-align: center;

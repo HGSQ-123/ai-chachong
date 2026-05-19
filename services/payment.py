@@ -123,6 +123,7 @@ class PaymentService:
 
             # xorpay API 参数
             payload = {
+                "aid": config.XORPAY_APP_ID,
                 "name": description,
                 "pay_type": "native",      # 扫码支付
                 "price": str(amount),

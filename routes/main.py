@@ -2,12 +2,18 @@
 主页面路由 - 首页、关于、免责声明
 """
 
-from flask import Blueprint, render_template, session
+from flask import Blueprint, render_template, session, jsonify
 from config import config
 from utils.database import db
 from services.billing import BillingService
 
 main_bp = Blueprint("main", __name__)
+
+
+@main_bp.route("/health")
+def health():
+    """轻量健康检查端点（供外部保活服务调用，几字节响应）"""
+    return jsonify({"status": "ok"}), 200, {"Cache-Control": "no-cache"}
 
 
 @main_bp.route("/")

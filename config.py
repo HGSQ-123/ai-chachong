@@ -34,6 +34,12 @@ class Config:
     # 新用户首次检测免费
     FIRST_DETECTION_FREE = os.getenv("FIRST_DETECTION_FREE", "true").lower() in ("1","true","yes")
 
+    # 降低AI率 / 降低查重率 定价
+    REDUCE_AI_FIRST_PRICE = float(os.getenv("REDUCE_AI_FIRST_PRICE", 2.0))         # 首次降低AI率 ¥2
+    REDUCE_PLAGIARISM_FIRST_PRICE = float(os.getenv("REDUCE_PLAGIARISM_FIRST_PRICE", 2.0))  # 首次降查重 ¥2
+    REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.5))                # 后续0.5元/千字
+    REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 5000))                      # 单次最多5000字
+
     # 单次最大检测字数
     MAX_DETECTION_WORDS = int(os.getenv("MAX_DETECTION_WORDS", 50000))
 
@@ -101,7 +107,7 @@ class Config:
 
     # ==================== 广告位配置 ====================
     # 公告内容（支持HTML）
-    ANNOUNCEMENT_TEXT = "🎉 新用户注册即送<strong>5000字</strong>免费检测额度！邀请好友再送1000字！"
+    ANNOUNCEMENT_TEXT = "🎉 首次双检测<strong>免费</strong>+加赠5000字！降低AI率首次仅<strong>¥2</strong>！邀请好友注册送<strong>10000字</strong>！"
     ANNOUNCEMENT_ENABLED = True
 
     # 广告位内容

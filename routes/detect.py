@@ -464,12 +464,10 @@ def api_task_status(task_id):
 @detect_bp.route("/api/reduce-ai", methods=["POST"])
 def api_reduce_ai():
     """
-    降低AI生成率——针对AI特征进行文本改写
-    处理逻辑：
-    1. 识别AI常见句式/词汇
-    2. 同义替换+句式重组
-    3. 增加个性化表达
+    降低AI生成率
+    计费：首次¥2（不消耗额度），后续0.5元/千字（与检测共享字数额度）
     """
+    import math
     try:
         data = request.get_json()
         if not data:
@@ -480,10 +478,39 @@ def api_reduce_ai():
             return jsonify({"success": False, "message": "请输入要处理的文本"}), 400
         if len(text) < 20:
             return jsonify({"success": False, "message": "文本过短，至少20个字符"}), 400
-        if len(text) > 5000:
-            return jsonify({"success": False, "message": "单次最多5000字符"}), 400
+        if len(text) > config.REDUCE_MAX_CHARS:
+            return jsonify({"success": False, "message": f"单次最多{config.REDUCE_MAX_CHARS}字符"}), 400
 
-        # 尝试DeepSeek真实降AI
+        # ========== 计费逻辑 ==========
+        user_id = session.get("user_id")
+        billing_info = None
+        if not user_id:
+            return jsonify({"success": False, "message": "请先登录后使用此功能", "need_login": True}), 401
+
+        is_first = db.is_first_reduce_ai(user_id)
+        if is_first:
+            billing_info = {"type": "first", "cost": config.REDUCE_AI_FIRST_PRICE, "label": "首次降低AI率 ¥2"}
+        else:
+            # 按字数计费，从充值额度扣除
+            char_count = len(text)
+            k_chars = math.ceil(char_count / 1000)
+            cost_words = k_chars * 1000  # 需扣除的字数
+            credits_info = db.get_user_credits(user_id)
+            total_avail = credits_info["total_available"]
+            if total_avail < cost_words:
+                need = cost_words - total_avail
+                need_k = math.ceil(need / 1000)
+                return jsonify({
+                    "success": False,
+                    "need_recharge": True,
+                    "message": f"额度不足，还需{need}字（约¥{need_k * config.CREDIT_PRICE_PER_K:.2f}），请先充值",
+                    "available": total_avail,
+                    "needed": cost_words,
+                }), 402
+            cost_yuan = round(k_chars * config.REDUCE_PRICE_PER_K, 2)
+            billing_info = {"type": "normal", "cost": cost_yuan, "words": cost_words, "label": f"降低AI率 {k_chars}千字 ¥{cost_yuan}"}
+
+        # ========== 执行降AI ==========
         from services.api_client import DeepSeekClient
         if DeepSeekClient.is_configured():
             prompt = f"""你是一位学术论文降AI专家。请对以下文本进行改写，降低AI生成痕迹：
@@ -504,20 +531,22 @@ def api_reduce_ai():
                 temperature=0.9, max_tokens=4096
             )
             if success:
-                # 再检测一次对比效果
                 from services.ai_detector import AIDetector
                 before = AIDetector.detect(text)
                 after = AIDetector.detect(result)
+                _finalize_reduce_billing(user_id, billing_info, "reduce_ai")
                 return jsonify({
                     "success": True,
                     "result_text": result,
                     "before_ai": before.get("ai_score", 0),
                     "after_ai": after.get("ai_score", 0),
                     "method": "deepseek",
+                    "billing": billing_info,
                 })
 
         # 模拟降AI
         result_text, before_ai, after_ai = _simulate_reduce_ai(text)
+        _finalize_reduce_billing(user_id, billing_info, "reduce_ai")
 
         return jsonify({
             "success": True,
@@ -525,10 +554,25 @@ def api_reduce_ai():
             "before_ai": before_ai,
             "after_ai": after_ai,
             "method": "simulation",
+            "billing": billing_info,
         })
 
     except Exception as e:
         return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
+
+
+def _finalize_reduce_billing(user_id, billing_info, reduce_type):
+    """完成降重计费"""
+    from utils.database import db
+    if billing_info["type"] == "first":
+        db.create_billing_record(user_id, billing_info["cost"], 0, reduce_type, billing_info["label"])
+        if reduce_type == "reduce_ai":
+            db.increment_reduce_ai(user_id)
+        else:
+            db.increment_reduce_plagiarism(user_id)
+    else:
+        db.deduct_credits(user_id, billing_info["words"])
+        db.create_billing_record(user_id, billing_info["cost"], billing_info["words"], reduce_type, billing_info["label"])
 
 
 def _simulate_reduce_ai(text: str):
@@ -563,12 +607,10 @@ def _simulate_reduce_ai(text: str):
 @detect_bp.route("/api/reduce-plagiarism", methods=["POST"])
 def api_reduce_plagiarism():
     """
-    降低查重率——针对重复内容进行深度改写
-    处理逻辑：
-    1. 同义词替换（保留学术含义）
-    2. 句式重组（主动/被动、语序调整）
-    3. 长句拆分、短句合并
+    降低查重率
+    计费：首次¥2（不消耗额度），后续0.5元/千字（与检测共享字数额度）
     """
+    import math
     try:
         data = request.get_json()
         if not data:
@@ -579,10 +621,38 @@ def api_reduce_plagiarism():
             return jsonify({"success": False, "message": "请输入要处理的文本"}), 400
         if len(text) < 20:
             return jsonify({"success": False, "message": "文本过短，至少20个字符"}), 400
-        if len(text) > 5000:
-            return jsonify({"success": False, "message": "单次最多5000字符"}), 400
+        if len(text) > config.REDUCE_MAX_CHARS:
+            return jsonify({"success": False, "message": f"单次最多{config.REDUCE_MAX_CHARS}字符"}), 400
 
-        # 尝试DeepSeek真实降重
+        # ========== 计费逻辑 ==========
+        user_id = session.get("user_id")
+        billing_info = None
+        if not user_id:
+            return jsonify({"success": False, "message": "请先登录后使用此功能", "need_login": True}), 401
+
+        is_first = db.is_first_reduce_plagiarism(user_id)
+        if is_first:
+            billing_info = {"type": "first", "cost": config.REDUCE_PLAGIARISM_FIRST_PRICE, "label": "首次降低查重率 ¥2"}
+        else:
+            char_count = len(text)
+            k_chars = math.ceil(char_count / 1000)
+            cost_words = k_chars * 1000
+            credits_info = db.get_user_credits(user_id)
+            total_avail = credits_info["total_available"]
+            if total_avail < cost_words:
+                need = cost_words - total_avail
+                need_k = math.ceil(need / 1000)
+                return jsonify({
+                    "success": False,
+                    "need_recharge": True,
+                    "message": f"额度不足，还需{need}字（约¥{need_k * config.CREDIT_PRICE_PER_K:.2f}），请先充值",
+                    "available": total_avail,
+                    "needed": cost_words,
+                }), 402
+            cost_yuan = round(k_chars * config.REDUCE_PRICE_PER_K, 2)
+            billing_info = {"type": "normal", "cost": cost_yuan, "words": cost_words, "label": f"降低查重率 {k_chars}千字 ¥{cost_yuan}"}
+
+        # ========== 执行降查重 ==========
         from services.api_client import DeepSeekClient
         if DeepSeekClient.is_configured():
             prompt = f"""你是一位论文降重专家。请对以下文本进行深度改写以降低查重率：
@@ -606,16 +676,19 @@ def api_reduce_plagiarism():
                 from services.plagiarism_checker import PlagiarismChecker
                 before = PlagiarismChecker.check(text)
                 after = PlagiarismChecker.check(result)
+                _finalize_reduce_billing(user_id, billing_info, "reduce_plagiarism")
                 return jsonify({
                     "success": True,
                     "result_text": result,
                     "before_plagiarism": before.get("plagiarism_score", 0),
                     "after_plagiarism": after.get("plagiarism_score", 0),
                     "method": "deepseek",
+                    "billing": billing_info,
                 })
 
         # 模拟降重
         result_text, before_p, after_p = _simulate_reduce_plagiarism(text)
+        _finalize_reduce_billing(user_id, billing_info, "reduce_plagiarism")
 
         return jsonify({
             "success": True,
@@ -623,6 +696,7 @@ def api_reduce_plagiarism():
             "before_plagiarism": before_p,
             "after_plagiarism": after_p,
             "method": "simulation",
+            "billing": billing_info,
         })
 
     except Exception as e:

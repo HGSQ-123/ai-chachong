@@ -11,7 +11,7 @@
             </h1>
             <p class="hero-subtitle">
                 双重检测 · AI生成率识别 + 全网重复率查重<br>
-                首次免费 · 之后0.5元/千字起 · 会员¥19.9/月
+                <strong>首次双检测免费 + 加赠5000字</strong> · 充值0.5元/千字
             </p>
             <div class="hero-actions">
                 <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary-lg">
@@ -161,9 +161,9 @@
                 <ul class="pricing-features">
                     <li>✅ 0.5元/千字超低价</li>
                     <li>✅ 余额永不过期</li>
-                    <li>✅ 自动扣费无需每次支付</li>
-                    <li>✅ ¥5=1万字 / ¥20=5万字</li>
-                    <li>✅ ¥100=30万字最划算</li>
+                    <li>✅ 首次降AI仅¥2</li>
+                    <li>✅ 首次降查重仅¥2</li>
+                    <li>✅ ¥5=1万字 / ¥100=30万字</li>
                 </ul>
                 <a href="{{ url_for('user.member_page') }}" class="btn btn-primary btn-block">立即充值</a>
             </div>
@@ -211,7 +211,7 @@
             </details>
             <details class="faq-item">
                 <summary>免费额度用完了怎么办？</summary>
-                <p>首次检测完全免费！之后只需充值额度即可继续使用，0.5元/千字，¥5起充。充值余额永不过期，自动扣费超方便。也可开通会员月卡¥{{ member_monthly_price }}/月享{{ member_monthly_quota }}字额度。</p>
+                <p>首次双检测完全免费+加赠5000字！之后充值额度即可继续使用，0.5元/千字，¥5起充。降低AI率与查重率首次各仅需¥2（与检测共享字数）。邀请好友注册双方各送10000字！</p>
             </details>
             <details class="faq-item">
                 <summary>支持哪些文件格式？</summary>
@@ -229,7 +229,7 @@
 <section class="cta-section">
     <div class="container cta-content">
         <h2>准备好检测您的论文了吗？</h2>
-        <p>首次检测免费 · 之后0.5元/千字起 · 立即体验！</p>
+        <p>首次双检测免费 · 加赠5000字 · 立即体验！</p>
         <div class="cta-actions">
             <a href="{{ url_for('detect.detect_page') }}" class="btn btn-white-lg">🚀 开始免费检测</a>
             <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline-white-lg">📝 免费注册</a>

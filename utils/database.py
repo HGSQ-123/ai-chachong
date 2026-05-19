@@ -66,6 +66,8 @@ class DatabaseManager:
                     password_hash TEXT NOT NULL,
                     balance REAL DEFAULT 0,
                     credits INTEGER DEFAULT 0,
+                    reduce_ai_count INTEGER DEFAULT 0,
+                    reduce_plagiarism_count INTEGER DEFAULT 0,
                     free_quota_used INTEGER DEFAULT 0,
                     referral_code TEXT UNIQUE,
                     referred_by INTEGER,
@@ -83,6 +85,8 @@ class DatabaseManager:
                 "ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",
                 "ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN reduce_ai_count INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN reduce_plagiarism_count INTEGER DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE",
                 "ALTER TABLE users ADD COLUMN referred_by INTEGER",
                 "ALTER TABLE users ADD COLUMN referral_reward_claimed INTEGER DEFAULT 0",
@@ -244,7 +248,7 @@ class DatabaseManager:
             ).fetchone()
             return dict(row) if row else None
 
-    def claim_referral_reward(self, user_id: int, reward_words: int = 1000) -> bool:
+    def claim_referral_reward(self, user_id: int, reward_words: int = 10000) -> bool:
         """领取邀请奖励（给被邀请人增加免费额度）"""
         user = self.get_user_by_id(user_id)
         if not user:
@@ -279,7 +283,7 @@ class DatabaseManager:
                 "SELECT COUNT(*) as cnt FROM users WHERE referred_by = ?", (user_id,)
             ).fetchone()["cnt"]
             # 总获得奖励字数
-            total_reward = invited_count * 1000
+            total_reward = invited_count * 10000
 
             # 获取用户自己的邀请码
             user = self.get_user_by_id(user_id)
@@ -299,7 +303,7 @@ class DatabaseManager:
                 "referral_code": referral_code,
                 "invited_count": invited_count,
                 "total_reward_words": total_reward,
-                "reward_per_invite": 1000,
+                "reward_per_invite": 10000,
             }
 
     # ==================== 检测记录相关操作 ====================
@@ -444,7 +448,7 @@ class DatabaseManager:
         """获取用户额度信息"""
         with self.get_connection() as conn:
             row = conn.execute(
-                "SELECT balance, credits, free_quota_used FROM users WHERE id = ?",
+                "SELECT balance, credits, free_quota_used, reduce_ai_count, reduce_plagiarism_count FROM users WHERE id = ?",
                 (user_id,)
             ).fetchone()
             if not row:
@@ -455,7 +459,31 @@ class DatabaseManager:
                 "credits": row["credits"],
                 "free_remaining": free_remaining,
                 "total_available": free_remaining + row["credits"],
+                "reduce_ai_count": row["reduce_ai_count"],
+                "reduce_plagiarism_count": row["reduce_plagiarism_count"],
             }
+
+    def is_first_reduce_ai(self, user_id: int) -> bool:
+        """检查是否首次降低AI率"""
+        user = self.get_user_by_id(user_id)
+        return (user.get("reduce_ai_count", 0) if user else 0) == 0
+
+    def is_first_reduce_plagiarism(self, user_id: int) -> bool:
+        """检查是否首次降低查重率"""
+        user = self.get_user_by_id(user_id)
+        return (user.get("reduce_plagiarism_count", 0) if user else 0) == 0
+
+    def increment_reduce_ai(self, user_id: int) -> bool:
+        """增加降低AI率使用次数"""
+        with self.get_connection() as conn:
+            conn.execute("UPDATE users SET reduce_ai_count = reduce_ai_count + 1 WHERE id = ?", (user_id,))
+            return True
+
+    def increment_reduce_plagiarism(self, user_id: int) -> bool:
+        """增加降低查重率使用次数"""
+        with self.get_connection() as conn:
+            conn.execute("UPDATE users SET reduce_plagiarism_count = reduce_plagiarism_count + 1 WHERE id = ?", (user_id,))
+            return True
 
 
 # 全局数据库管理器实例

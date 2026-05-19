@@ -37,7 +37,7 @@ class Config:
     # 降低AI率 / 降低查重率 定价
     REDUCE_AI_FIRST_PRICE = float(os.getenv("REDUCE_AI_FIRST_PRICE", 2.0))         # 首次降低AI率 ¥2
     REDUCE_PLAGIARISM_FIRST_PRICE = float(os.getenv("REDUCE_PLAGIARISM_FIRST_PRICE", 2.0))  # 首次降查重 ¥2
-    REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.5))                # 后续0.5元/千字
+    REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.49))             # 后续0.49元/千字
     REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 100000))                     # 单次最多100000字
 
     # 单次最大检测字数
@@ -48,10 +48,11 @@ class Config:
 
     # ==================== 充值额度配置（元/千字） ====================
     # 基础单价：0.5元/1000字
-    CREDIT_PRICE_PER_K = float(os.getenv("CREDIT_PRICE_PER_K", 0.5))
+    CREDIT_PRICE_PER_K = float(os.getenv("CREDIT_PRICE_PER_K", 0.49))
     
     # 充值套餐（金额 → 字数）
     RECHARGE_PACKAGES = [
+        {"amount": 0.49,  "words": 1000,   "label": "¥0.49 = 1千字", "badge": "体验"},
         {"amount": 5.0,   "words": 10000,  "label": "¥5 = 1万字",   "badge": "入门"},
         {"amount": 10.0,  "words": 20000,  "label": "¥10 = 2万字",  "badge": "实惠"},
         {"amount": 20.0,  "words": 50000,  "label": "¥20 = 5万字",  "badge": "推荐"},

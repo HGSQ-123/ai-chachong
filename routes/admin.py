@@ -56,9 +56,59 @@ def api_deepseek_test():
         })
 
 
-@admin_bp.route("/api/config-status")
-@login_required
-def api_config_status():
+@admin_bp.route("/analytics")
+def analytics_page():
+    """数据统计页面"""
+    return render_template("admin/analytics.html", config=config)
+
+
+@admin_bp.route("/api/analytics")
+def api_analytics():
+    """数据统计API"""
+    from utils.database import db
+    from datetime import datetime, timedelta
+    
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+    month_start = now.replace(day=1).strftime("%Y-%m-%d")
+    
+    with db.get_connection() as conn:
+        # 用户统计
+        total_users = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
+        today_users = conn.execute("SELECT COUNT(*) as c FROM users WHERE created_at >= ?", (today,)).fetchone()["c"]
+        
+        # 检测统计
+        total_detections = conn.execute("SELECT COUNT(*) as c FROM detection_records").fetchone()["c"]
+        today_detections = conn.execute("SELECT COUNT(*) as c FROM detection_records WHERE created_at >= ?", (today,)).fetchone()["c"]
+        week_detections = conn.execute("SELECT COUNT(*) as c FROM detection_records WHERE created_at >= ?", (week_ago,)).fetchone()["c"]
+        
+        # 充值统计
+        recharge_rows = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) as s, COUNT(*) as c FROM billing_records WHERE transaction_type IN ('recharge','member','recharge_first','rewrite_first')"
+        ).fetchone()
+        total_recharge = recharge_rows["s"]
+        total_recharge_count = recharge_rows["c"]
+        
+        today_recharge = conn.execute(
+            "SELECT COALESCE(SUM(amount),0) as s FROM billing_records WHERE transaction_type IN ('recharge','member','recharge_first') AND created_at >= ?", (today,)
+        ).fetchone()["s"]
+        
+        # 每日统计（近7天）
+        daily_stats = []
+        for i in range(6, -1, -1):
+            d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+            d_users = conn.execute("SELECT COUNT(*) as c FROM users WHERE created_at >= ? AND created_at < ?", (d, d+" 23:59:59")).fetchone()["c"]
+            d_detect = conn.execute("SELECT COUNT(*) as c FROM detection_records WHERE created_at >= ? AND created_at < ?", (d, d+" 23:59:59")).fetchone()["c"]
+            d_recharge = conn.execute("SELECT COALESCE(SUM(amount),0) as s FROM billing_records WHERE transaction_type IN ('recharge','member','recharge_first') AND created_at >= ? AND created_at < ?", (d, d+" 23:59:59")).fetchone()["s"]
+            daily_stats.append({"date": d[5:], "users": d_users, "detections": d_detect, "recharge": round(d_recharge, 2)})
+        
+    return jsonify({
+        "total_users": total_users, "today_users": today_users,
+        "total_detections": total_detections, "today_detections": today_detections, "week_detections": week_detections,
+        "total_recharge": round(total_recharge, 2), "total_recharge_count": total_recharge_count, "today_recharge": round(today_recharge, 2),
+        "daily": daily_stats,
+    })
     """查看所有API配置状态"""
     from services.api_client import DeepSeekClient, AIDetectionAPIClient, PlagiarismAPIClient
     from services.payment import PaymentService

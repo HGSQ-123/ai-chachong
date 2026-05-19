@@ -62,16 +62,56 @@ def forgot_password_page():
     return render_template("login.html", forgot_mode=True)
 
 
-@auth_bp.route("/api/send-code", methods=["POST"])
+@auth_bp.route("/api/captcha")
+def api_captcha():
+    """生成数学图形验证码（返回图片）"""
+    import io, random as rnd
+    from PIL import Image, ImageDraw, ImageFont
+    
+    a, b = rnd.randint(1, 20), rnd.randint(1, 20)
+    ops = ['+', '-', '×']
+    op = rnd.choice(ops)
+    if op == '+':
+        ans = a + b
+    elif op == '-':
+        ans = max(a, b) - min(a, b)
+        a, b = max(a, b), min(a, b)
+    else:
+        ans = a * b
+    question = f"{a} {op} {b} = ?"
+    session["captcha_answer"] = str(ans)
+
+    img = Image.new('RGB', (160, 50), '#f1f5f9')
+    draw = ImageDraw.Draw(img)
+    try:
+        font = ImageFont.truetype("arial.ttf", 24)
+    except Exception:
+        font = ImageFont.load_default()
+    bbox = draw.textbbox((0, 0), question, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    draw.text(((160-tw)//2, (50-th)//2), question, fill='#1e40af', font=font)
+    for _ in range(20):
+        x1, y1 = rnd.randint(0, 160), rnd.randint(0, 50)
+        draw.line([x1, y1, x1+8, y1+5], fill='#94a3b8', width=1)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return buf.getvalue(), 200, {'Content-Type': 'image/png', 'Cache-Control': 'no-cache'}
 def api_send_code():
     """
     发送验证码（手机或邮箱）
-    当前模式：直接返回验证码（演示）
-    生产模式：接入阿里云/腾讯云短信服务
+    需先通过图形验证码
     """
     try:
         data = request.get_json() or {}
         account = data.get("account", "").strip()
+        captcha_code = data.get("captcha", "").strip()
+
+        # 验证图形验证码
+        if session.get("captcha_answer", "") != captcha_code:
+            return jsonify({"success": False, "message": "图形验证码错误"}), 400
+        session.pop("captcha_answer", None)  # 一次性
+
         if not account:
             return jsonify({"success": False, "message": "请输入手机号或邮箱"}), 400
 

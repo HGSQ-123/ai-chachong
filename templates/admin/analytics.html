@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}数据统计 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <h2 class="section-title">📊 数据统计</h2>
+        
+        <!-- 概览卡片 -->
+        <div class="quota-dashboard" id="statsCards">
+            <div class="quota-card"><div class="quota-card-icon">👥</div><div class="quota-card-info"><span class="quota-card-label">总用户</span><span class="quota-card-value" id="totalUsers">-</span><span class="quota-card-unit">人</span></div></div>
+            <div class="quota-card"><div class="quota-card-icon">🆕</div><div class="quota-card-info"><span class="quota-card-label">今日新增</span><span class="quota-card-value" id="todayUsers">-</span><span class="quota-card-unit">人</span></div></div>
+            <div class="quota-card"><div class="quota-card-icon">🔍</div><div class="quota-card-info"><span class="quota-card-label">总检测</span><span class="quota-card-value" id="totalDetections">-</span><span class="quota-card-unit">次</span></div></div>
+            <div class="quota-card"><div class="quota-card-icon">💰</div><div class="quota-card-info"><span class="quota-card-label">总充值</span><span class="quota-card-value" id="totalRecharge">-</span><span class="quota-card-unit">元</span></div></div>
+            <div class="quota-card"><div class="quota-card-icon">💳</div><div class="quota-card-info"><span class="quota-card-label">今日充值</span><span class="quota-card-value" id="todayRecharge">-</span><span class="quota-card-unit">元</span></div></div>
+        </div>
+
+        <!-- 每日趋势 -->
+        <div class="content-card" style="margin-top:24px;">
+            <h3>📈 近7天趋势</h3>
+            <div style="overflow-x:auto;">
+                <table class="records-table" style="min-width:500px;">
+                    <thead><tr><th>日期</th><th>新用户</th><th>检测次数</th><th>充值(元)</th></tr></thead>
+                    <tbody id="dailyTable"><tr><td colspan="4">加载中...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadStats() {
+    try {
+        const resp = await fetch('/admin/api/analytics');
+        const data = await resp.json();
+        document.getElementById('totalUsers').textContent = data.total_users;
+        document.getElementById('todayUsers').textContent = data.today_users;
+        document.getElementById('totalDetections').textContent = data.total_detections;
+        document.getElementById('totalRecharge').textContent = data.total_recharge;
+        document.getElementById('todayRecharge').textContent = data.today_recharge;
+        const tbody = document.getElementById('dailyTable');
+        tbody.innerHTML = data.daily.map(d => `<tr><td>${d.date}</td><td>${d.users}</td><td>${d.detections}</td><td style="color:var(--primary);font-weight:600;">¥${d.recharge}</td></tr>`).join('');
+    } catch(e) {
+        document.getElementById('dailyTable').innerHTML = '<tr><td colspan="4">加载失败</td></tr>';
+    }
+}
+loadStats();
+</script>
+{% endblock %}

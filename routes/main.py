@@ -46,6 +46,18 @@ def disclaimer():
     return render_template("disclaimer.html", config=config)
 
 
+@main_bp.route("/privacy")
+def privacy():
+    """隐私政策页面"""
+    return render_template("privacy.html", config=config)
+
+
+@main_bp.route("/terms")
+def terms():
+    """服务条款页面"""
+    return render_template("terms.html", config=config)
+
+
 @main_bp.route("/tools")
 def tools_page():
     """AI辅助工具页面（降重、润色、修正、优化）"""

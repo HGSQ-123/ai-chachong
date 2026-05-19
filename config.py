@@ -84,6 +84,15 @@ class Config:
     XORPAY_APP_ID = os.getenv("XORPAY_APP_ID", "")
     XORPAY_API_SECRET = os.getenv("XORPAY_API_SECRET", "")
 
+    # 打印支付配置状态（部署调试用）
+    @classmethod
+    def print_payment_status(cls):
+        import sys
+        if cls.XORPAY_APP_ID and cls.XORPAY_API_SECRET:
+            print(f"[PAYMENT] xorpay已配置 aid={cls.XORPAY_APP_ID}", file=sys.stderr)
+        else:
+            print(f"[PAYMENT] xorpay未配置, app_id={'SET' if cls.XORPAY_APP_ID else 'EMPTY'}, secret={'SET' if cls.XORPAY_API_SECRET else 'EMPTY'}", file=sys.stderr)
+
     # 微信支付（可选，需营业执照）
     WECHAT_APP_ID = os.getenv("WECHAT_APP_ID", "")
     WECHAT_MCH_ID = os.getenv("WECHAT_MCH_ID", "")

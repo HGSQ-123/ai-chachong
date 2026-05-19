@@ -84,6 +84,9 @@ def create_app():
     # 触发数据库初始化（创建表和索引）
     _ = database.db_path
 
+    # 打印支付配置状态（验证密钥加载）
+    config.print_payment_status()
+
     return app
 
 

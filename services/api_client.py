@@ -69,7 +69,9 @@ class APIClient:
                 )
 
                 if response.status_code == 200:
-                    return True, response.json(), None
+                    import json
+                    response.encoding = 'utf-8'
+                    return True, json.loads(response.text), None
                 elif response.status_code == 401:
                     return False, None, "API密钥无效，请检查配置"
                 elif response.status_code == 429:

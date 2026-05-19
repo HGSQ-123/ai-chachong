@@ -61,8 +61,13 @@ def api_deepseek_test():
 def api_config_status():
     """查看所有API配置状态"""
     from services.api_client import DeepSeekClient, AIDetectionAPIClient, PlagiarismAPIClient
+    from services.payment import PaymentService
 
     return jsonify({
+        "payments": {
+            "channel": PaymentService.get_active_channel(),
+            "xorpay_configured": bool(config.XORPAY_APP_ID and config.XORPAY_API_SECRET),
+        },
         "deepseek": {
             "configured": DeepSeekClient.is_configured(),
             "label": "AI降重改写",

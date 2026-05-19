@@ -34,7 +34,8 @@ def create_app():
 
     # 确保必要目录存在
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
-    os.makedirs(os.path.join(os.path.dirname(__file__), "data"), exist_ok=True)
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
+    os.makedirs(data_dir, exist_ok=True)
 
     # ==================== 注册蓝图 ====================
     from routes.auth import auth_bp

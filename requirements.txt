@@ -8,6 +8,7 @@ Werkzeug>=3.0                 # WSGI工具库（密码哈希）
 python-docx>=1.1.2            # Word文档解析
 PyPDF2>=3.0.1                 # PDF文档解析
 python-dotenv>=1.0            # 环境变量加载
+requests>=2.31                # HTTP请求（支付API/第三方API调用）
 # 以下为可选依赖（生产环境部署时安装）
 # gunicorn>=23.0.0            # 生产环境WSGI服务器
 # APScheduler>=3.11.0         # 定时任务（自动清理上传文件）

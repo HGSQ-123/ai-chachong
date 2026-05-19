@@ -62,6 +62,7 @@ class DatabaseManager:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     username TEXT UNIQUE NOT NULL,
                     email TEXT UNIQUE NOT NULL,
+                    phone TEXT DEFAULT '',
                     password_hash TEXT NOT NULL,
                     free_quota_used INTEGER DEFAULT 0,
                     referral_code TEXT UNIQUE,
@@ -75,8 +76,9 @@ class DatabaseManager:
                 )
             """)
 
-            # 兼容旧表：尝试添加裂变字段（如果表已存在但缺少这些列）
+            # 兼容旧表
             for col_sql in [
+                "ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",
                 "ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE",
                 "ALTER TABLE users ADD COLUMN referred_by INTEGER",
                 "ALTER TABLE users ADD COLUMN referral_reward_claimed INTEGER DEFAULT 0",
@@ -84,7 +86,7 @@ class DatabaseManager:
                 try:
                     cursor.execute(col_sql)
                 except Exception:
-                    pass  # 列已存在，跳过
+                    pass
 
             # 检测记录表（不存储原文，仅存哈希用于去重）
             cursor.execute("""
@@ -134,13 +136,14 @@ class DatabaseManager:
     # ==================== 用户相关操作 ====================
 
     def create_user(self, username: str, email: str, password_hash: str,
-                    referral_code: str = None, referred_by: int = None) -> int:
-        """创建新用户，返回用户ID。支持邀请码"""
+                    referral_code: str = None, referred_by: int = None,
+                    phone: str = "") -> int:
+        """创建新用户"""
         with self.get_connection() as conn:
             cursor = conn.execute(
-                """INSERT INTO users (username, email, password_hash, referral_code, referred_by)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (username, email, password_hash, referral_code, referred_by)
+                """INSERT INTO users (username, email, password_hash, referral_code, referred_by, phone)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (username, email, password_hash, referral_code, referred_by, phone)
             )
             return cursor.lastrowid
 
@@ -161,6 +164,21 @@ class DatabaseManager:
         with self.get_connection() as conn:
             row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
             return dict(row) if row else None
+
+    def get_user_by_phone(self, phone: str) -> dict | None:
+        """根据手机号获取用户"""
+        if not phone:
+            return None
+        with self.get_connection() as conn:
+            row = conn.execute("SELECT * FROM users WHERE phone = ?", (phone,)).fetchone()
+            return dict(row) if row else None
+
+    def update_user_password(self, user_id: int, new_password_hash: str) -> bool:
+        """更新用户密码"""
+        with self.get_connection() as conn:
+            conn.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                        (new_password_hash, user_id))
+            return True
 
     def update_user_quota(self, user_id: int, free_quota_used: int = None,
                           member_quota_used: int = None) -> bool:

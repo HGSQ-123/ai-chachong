@@ -11,7 +11,7 @@
             </h1>
             <p class="hero-subtitle">
                 双重检测 · AI生成率识别 + 全网重复率查重<br>
-                支持粘贴文本和上传Word/PDF，秒出详细报告
+                首次免费 · 之后0.5元/千字起 · 会员¥19.9/月
             </p>
             <div class="hero-actions">
                 <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary-lg">
@@ -23,8 +23,8 @@
             </div>
             <div class="hero-stats">
                 <div class="stat-item">
-                    <span class="stat-number">{{ free_quota_words }}</span>
-                    <span class="stat-label">新用户免费字数</span>
+                    <span class="stat-number">首次</span>
+                    <span class="stat-label">检测免费</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">双重</span>
@@ -155,7 +155,7 @@
             <div class="pricing-card">
                 <h3>按次付费</h3>
                 <div class="pricing-price">
-                    <span class="price">¥1.5</span>
+                    <span class="price">¥0.5</span>
                     <span class="price-unit">/千字起</span>
                 </div>
                 <ul class="pricing-features">
@@ -211,7 +211,7 @@
             </details>
             <details class="faq-item">
                 <summary>免费额度用完了怎么办？</summary>
-                <p>免费额度用完后，您可以选择按次付费检测（阶梯价格，字数越多越便宜），或者开通会员月卡（每月{{ member_monthly_quota }}字，仅需¥{{ member_monthly_price }}/月），享受超高性价比。</p>
+                <p>首次检测免费！之后按次付费仅需0.5元/千字起（字数越多越便宜），或开通会员月卡¥{{ member_monthly_price }}/月享{{ member_monthly_quota }}字额度。</p>
             </details>
             <details class="faq-item">
                 <summary>支持哪些文件格式？</summary>
@@ -229,7 +229,7 @@
 <section class="cta-section">
     <div class="container cta-content">
         <h2>准备好检测您的论文了吗？</h2>
-        <p>新用户注册即送{{ free_quota_words }}字免费额度，立即体验双重检测服务！</p>
+        <p>首次检测免费 · 之后0.5元/千字起 · 立即体验！</p>
         <div class="cta-actions">
             <a href="{{ url_for('detect.detect_page') }}" class="btn btn-white-lg">🚀 开始免费检测</a>
             <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline-white-lg">📝 免费注册</a>

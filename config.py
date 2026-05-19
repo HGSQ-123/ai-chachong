@@ -31,6 +31,8 @@ class Config:
     # ==================== 业务配置 ====================
     # 新用户免费额度（字数）
     FREE_QUOTA_WORDS = int(os.getenv("FREE_QUOTA_WORDS", 5000))
+    # 新用户首次检测免费
+    FIRST_DETECTION_FREE = os.getenv("FIRST_DETECTION_FREE", "true").lower() in ("1","true","yes")
 
     # 单次最大检测字数
     MAX_DETECTION_WORDS = int(os.getenv("MAX_DETECTION_WORDS", 50000))

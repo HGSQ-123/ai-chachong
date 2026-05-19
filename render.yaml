@@ -18,6 +18,6 @@ services:
       - key: PORT
         value: "10000"
       - key: XORPAY_APP_ID
-        value: "REDACTED_APP_ID"
+        sync: false
       - key: XORPAY_API_SECRET
-        value: "REDACTED_SECRET"
+        sync: false

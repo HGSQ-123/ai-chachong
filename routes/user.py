@@ -247,28 +247,35 @@ def api_pay_mock_confirm():
 def api_pay_callback(channel):
     """
     支付平台回调接口
-    xorpay/微信支付/支付宝 支付成功后POST到此地址
+    xorpay/微信/支付宝 支付成功后POST到此地址
     """
     from services.payment import PaymentService
 
     if channel == "xorpay":
         callback_data = request.form.to_dict()
     elif channel == "wechat":
-        # 微信支付回调数据在request.data中（XML格式）
         callback_data = request.get_json(force=True, silent=True) or {}
     elif channel == "alipay":
         callback_data = request.form.to_dict()
     else:
         return "FAIL", 400
 
-    # 验证回调并处理
+    # 验证回调
     result = PaymentService.verify_callback(callback_data)
 
     if result["success"]:
-        # 支付成功，开通会员
-        BillingService.purchase_member(result["user_id"])
+        uid = result["user_id"]
+        amt = result["amount"]
+        
+        # 判断订单类型：根据金额匹配套餐
+        for i, pkg in enumerate(config.RECHARGE_PACKAGES):
+            if abs(pkg["amount"] - amt) < 0.01:
+                BillingService.purchase_credits(uid, i)
+                break
+        else:
+            # 非充值套餐，按会员处理
+            BillingService.purchase_member(uid)
 
-        # 返回成功应答
         if channel == "wechat":
             return '<xml><return_code>SUCCESS</return_code></xml>', 200
         elif channel == "xorpay":
@@ -277,6 +284,16 @@ def api_pay_callback(channel):
             return "success", 200
     else:
         return "FAIL", 400
+
+
+@user_bp.route("/api/task-status/<task_id>")
+def api_task_status(task_id):
+    """查询异步任务状态"""
+    from services.task_manager import task_manager
+    task = task_manager.get_task(task_id)
+    if not task:
+        return jsonify({"success": False, "message": "任务不存在"}), 404
+    return jsonify({"success": True, "task": task})
 
 
 @user_bp.route("/api/ai-rewrite", methods=["POST"])
@@ -312,25 +329,31 @@ def api_ai_rewrite():
         if billing_info["type"] == "insufficient":
             return jsonify(billing_info), 402
 
-        # ========== 执行改写 ==========
-        from services.api_client import DeepSeekClient
-        if DeepSeekClient.is_configured():
-            success, result_text, suggestions, error = DeepSeekClient.rewrite(text, action)
-            if success:
-                _apply_rewrite_billing(user_id, billing_info)
-                return jsonify({
-                    "success": True, "result_text": result_text,
-                    "suggestions": suggestions, "action": action,
-                    "method": "deepseek", "billing": billing_info,
-                })
+        # ========== 异步执行改写 ==========
+        import uuid, threading
+        task_id = str(uuid.uuid4())[:8]
+        from services.task_manager import task_manager
+        task_manager.create_task(task_id)
+        task_manager.update_task(task_id, status="processing", progress=10, message="开始改写...")
 
-        result_text, suggestions = _simulate_ai_rewrite(text, action)
-        _apply_rewrite_billing(user_id, billing_info)
-        return jsonify({
-            "success": True, "result_text": result_text,
-            "suggestions": suggestions, "action": action,
-            "method": "simulation", "billing": billing_info,
-        })
+        def run_rewrite():
+            from services.api_client import DeepSeekClient
+            if DeepSeekClient.is_configured():
+                success, rt, suggs, err = DeepSeekClient.rewrite(text, action)
+                if success:
+                    _apply_rewrite_billing(user_id, billing_info, text, rt, action, 'deepseek')
+                    task_manager.update_task(task_id, status="done", progress=100,
+                        result={"success": True, "result_text": rt, "suggestions": suggs,
+                                "action": action, "method": "deepseek", "billing": billing_info})
+                    return
+            rt, suggs = _simulate_ai_rewrite(text, action)
+            _apply_rewrite_billing(user_id, billing_info, text, rt, action, 'simulation')
+            task_manager.update_task(task_id, status="done", progress=100,
+                result={"success": True, "result_text": rt, "suggestions": suggs,
+                        "action": action, "method": "simulation", "billing": billing_info})
+
+        threading.Thread(target=run_rewrite, daemon=True).start()
+        return jsonify({"success": True, "task_id": task_id, "message": "改写已开始，请稍候..."})
 
     except Exception as e:
         return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
@@ -376,21 +399,29 @@ def _calc_rewrite_cost(user: dict, char_count: int) -> dict:
     return {"type": "normal", "cost": round(k * config.REDUCE_PRICE_PER_K, 2), "words": cost_words, "label": f"改写 {k}千字 ¥{round(k * config.REDUCE_PRICE_PER_K, 2)}"}
 
 
-def _apply_rewrite_billing(user_id: int, info: dict):
-    """执行改写计费"""
+def _apply_rewrite_billing(user_id: int, info: dict, original_text: str = "", result_text: str = "", action: str = "rewrite", method: str = "simulation"):
+    """执行改写计费 + 保存历史"""
     from utils.database import db
-    if info["type"] == "first":
+    billing_type = info["type"]
+    billing_cost = info["cost"]
+    
+    if billing_type == "first":
         db.increment_reduce_ai(user_id)
         db.increment_reduce_plagiarism(user_id)
-        db.create_billing_record(user_id, 2.0, 0, "rewrite_first", info["label"])
-    elif info["type"] == "member_free":
+        db.create_billing_record(user_id, billing_cost, 0, "rewrite_first", info["label"])
+    elif billing_type == "member_free":
         with db.get_connection() as conn:
             conn.execute("UPDATE users SET member_rewrite_count=member_rewrite_count+1, member_rewrite_reset=? WHERE id=?",
                         (__import__('datetime').datetime.now().strftime("%Y-%m-%d"), user_id))
         db.create_billing_record(user_id, 0, 0, "rewrite_member_free", info["label"])
-    elif info["type"] == "normal":
+    elif billing_type == "normal":
         db.deduct_credits(user_id, info["words"])
-        db.create_billing_record(user_id, info["cost"], info["words"], "rewrite", info["label"])
+        db.create_billing_record(user_id, billing_cost, info["words"], "rewrite", info["label"])
+    
+    # 保存改写历史（截前500字）
+    if original_text:
+        db.create_rewrite_record(user_id, original_text[:500], result_text[:500],
+                                 len(original_text), action, method, billing_type, billing_cost)
 
 
 def _simulate_ai_rewrite(text: str, action: str) -> tuple:

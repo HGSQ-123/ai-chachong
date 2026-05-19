@@ -28,7 +28,11 @@ class DatabaseManager:
             return
         # 默认数据库路径
         if db_path is None:
-            db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+            # Render Disk 持久化路径优先
+            if os.path.isdir("/data"):
+                db_dir = "/data"
+            else:
+                db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
             os.makedirs(db_dir, exist_ok=True)
             db_path = os.path.join(db_dir, "detection.db")
         self.db_path = db_path
@@ -126,6 +130,23 @@ class DatabaseManager:
                     word_count INTEGER DEFAULT 0,
                     transaction_type TEXT NOT NULL,
                     description TEXT DEFAULT '',
+                    created_at TEXT DEFAULT (datetime('now', 'localtime')),
+                    FOREIGN KEY (user_id) REFERENCES users(id)
+                )
+            """)
+
+            # 改写历史表
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS rewrite_records (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    original_text TEXT NOT NULL,
+                    result_text TEXT NOT NULL,
+                    char_count INTEGER DEFAULT 0,
+                    action TEXT DEFAULT 'rewrite',
+                    method TEXT DEFAULT 'simulation',
+                    billing_type TEXT DEFAULT '',
+                    billing_cost REAL DEFAULT 0,
                     created_at TEXT DEFAULT (datetime('now', 'localtime')),
                     FOREIGN KEY (user_id) REFERENCES users(id)
                 )
@@ -488,6 +509,30 @@ class DatabaseManager:
         with self.get_connection() as conn:
             conn.execute("UPDATE users SET reduce_plagiarism_count = reduce_plagiarism_count + 1 WHERE id = ?", (user_id,))
             return True
+
+    # ==================== 改写历史 ====================
+
+    def create_rewrite_record(self, user_id: int, original: str, result: str,
+                               char_count: int, action: str, method: str,
+                               billing_type: str, billing_cost: float) -> int:
+        """创建改写历史记录"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                """INSERT INTO rewrite_records (user_id, original_text, result_text, char_count, action, method, billing_type, billing_cost)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (user_id, original, result, char_count, action, method, billing_type, billing_cost)
+            )
+            return cursor.lastrowid
+
+    def get_user_rewrite_records(self, user_id: int, limit: int = 30) -> list:
+        """获取用户改写历史"""
+        with self.get_connection() as conn:
+            rows = conn.execute(
+                """SELECT id, char_count, action, method, billing_type, billing_cost, created_at
+                   FROM rewrite_records WHERE user_id = ? ORDER BY created_at DESC LIMIT ?""",
+                (user_id, limit)
+            ).fetchall()
+            return [dict(row) for row in rows]
 
 
 # 全局数据库管理器实例

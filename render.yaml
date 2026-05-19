@@ -21,3 +21,8 @@ services:
         sync: false
       - key: XORPAY_API_SECRET
         sync: false
+    # 持久化磁盘（1GB免费）
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1

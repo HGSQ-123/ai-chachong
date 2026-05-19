@@ -107,36 +107,45 @@ async function executeTool() {
         showToast('请先输入要处理的文本', 'warning');
         return;
     }
-
-    const btn = document.getElementById('btnExecute');
-    btn.disabled = true;
-    btn.textContent = '⏳ 处理中...';
+    const btn = document.getElementById('btnExecute'), output = document.getElementById('toolOutput');
+    btn.disabled = true; btn.textContent = '⏳ 提交中...';
 
     try {
         const resp = await fetch('{{ url_for("user.api_ai_rewrite") }}', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            method: 'POST', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({ text: text, action: currentTool }),
         });
         const data = await resp.json();
-
-        if (data.success) {
-            document.getElementById('toolOutput').innerHTML = `<div class="result-text">${escapeHtml(data.result_text)}</div>`;
-            if (data.suggestions && data.suggestions.length > 0) {
-                const sugHtml = '<h4>💡 处理建议</h4><ul>' + data.suggestions.map(s => `<li>${s}</li>`).join('') + '</ul>';
-                document.getElementById('toolSuggestions').innerHTML = sugHtml;
-                document.getElementById('toolSuggestions').style.display = 'block';
-            }
-            document.getElementById('btnCopy').style.display = 'block';
-            showToast('处理完成！', 'success');
-        } else {
-            showToast(data.message, 'error');
-        }
+        if (!data.success) { showToast(data.message, 'error'); btn.disabled = false; btn.textContent = '🔄 开始处理'; return; }
+        
+        // 异步轮询
+        const taskId = data.task_id;
+        output.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>改写进行中... 已完成 <span id="taskProgress">10%</span></p><p style="font-size:12px;color:var(--text-muted);">您可以在网站中继续操作，稍后回来查看结果</p></div>';
+        
+        const poll = setInterval(async () => {
+            try {
+                const r = await fetch('/user/api/task-status/' + taskId);
+                const d = await r.json();
+                if (d.success && d.task) {
+                    const t = d.task;
+                    document.getElementById('taskProgress').textContent = t.progress + '%';
+                    if (t.status === 'done' && t.result) {
+                        clearInterval(poll);
+                        const res = t.result;
+                        output.innerHTML = `<div class="result-text">${escapeHtml(res.result_text)}</div>`;
+                        if (res.billing) showToast((res.billing.label||'完成') + '!', 'success');
+                        else showToast('处理完成！', 'success');
+                        if (res.suggestions) document.getElementById('toolSuggestions').innerHTML = '<h4>💡 建议</h4><ul>'+res.suggestions.map(s=>`<li>${s}</li>`).join('')+'</ul>';
+                        document.getElementById('toolSuggestions').style.display = 'block';
+                        document.getElementById('btnCopy').style.display = 'block';
+                        btn.disabled = false; btn.textContent = '🔄 开始处理';
+                    }
+                }
+            } catch(e) {}
+        }, 1500);
+        setTimeout(() => clearInterval(poll), 120000); // 2分钟超时
     } catch (e) {
-        showToast('网络异常，请稍后重试', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '🔄 开始处理';
+        showToast('网络异常', 'error'); btn.disabled = false; btn.textContent = '🔄 开始处理';
     }
 }
 

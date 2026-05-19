@@ -29,11 +29,18 @@ def guest_only(f):
     """
     仅限未登录用户访问（如登录页、注册页）
     已登录用户重定向到首页
+    会验证 session 中的 user_id 是否在数据库中真实存在
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if "user_id" in session:
-            return redirect(url_for("main.index"))
+            from utils.database import db
+            user = db.get_user_by_id(session["user_id"])
+            if user is not None:
+                return redirect(url_for("main.index"))
+            else:
+                # session 残留但用户已不存在，清除 session
+                session.clear()
         return f(*args, **kwargs)
     return decorated_function
 

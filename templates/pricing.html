@@ -1,36 +1,70 @@
 {% extends "base.html" %}
-{% block title %}会员充值 - {{ site_name }}{% endblock %}
+{% block title %}充值中心 - {{ site_name }}{% endblock %}
 
 {% block content %}
 <section class="section-padding">
     <div class="container">
         <div class="section-header">
-            <h2 class="section-title">👑 会员充值</h2>
-            <p class="section-desc">开通会员，享受每月{{ member_monthly_quota }}字检测额度 + AI工具免费使用</p>
+            <h2 class="section-title">💰 充值中心</h2>
+            <p class="section-desc">0.5元/千字 · 先充值后消费 · 余额永不过期</p>
         </div>
 
         <!-- ==================== 当前额度 ==================== -->
         {% if user and quota_info %}
         <div class="quota-info-bar" style="justify-content: center; gap: 40px;">
             <div class="quota-item">
-                <span class="quota-label">🎁 免费额度剩余</span>
-                <span class="quota-value">{{ quota_info.free_quota_remaining }} 字</span>
+                <span class="quota-label">🎁 免费额度</span>
+                <span class="quota-value">{{ quota_info.free_remaining }} 字</span>
+            </div>
+            <div class="quota-item">
+                <span class="quota-label">💳 充值余额</span>
+                <span class="quota-value">{{ quota_info.credits }} 字</span>
+            </div>
+            <div class="quota-item">
+                <span class="quota-label">📊 总计可用</span>
+                <span class="quota-value" style="color:var(--primary);font-weight:700;">{{ quota_info.total_remaining }} 字</span>
             </div>
             {% if quota_info.is_member %}
             <div class="quota-item">
-                <span class="quota-label">👑 会员额度剩余</span>
-                <span class="quota-value">{{ quota_info.member_quota_remaining }} 字</span>
-            </div>
-            <div class="quota-item">
-                <span class="quota-label">📅 会员到期</span>
-                <span class="quota-value">{{ user.member_expiry[:10] if user.member_expiry else 'N/A' }}</span>
+                <span class="quota-label">👑 会员额度</span>
+                <span class="quota-value">{{ quota_info.member_remaining }} 字</span>
             </div>
             {% endif %}
         </div>
         {% endif %}
 
+        <!-- ==================== 充值额度套餐 ==================== -->
+        <h3 style="text-align:center; margin: 40px 0 20px;">📦 充值额度套餐</h3>
+        <div class="recharge-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; max-width:1000px; margin:0 auto;">
+            {% set packages = [
+                {"amount":5,"words":10000,"label":"¥5 = 1万字","badge":"入门"},
+                {"amount":10,"words":20000,"label":"¥10 = 2万字","badge":"实惠"},
+                {"amount":20,"words":50000,"label":"¥20 = 5万字","badge":"推荐"},
+                {"amount":50,"words":150000,"label":"¥50 = 15万字","badge":"超值"},
+                {"amount":100,"words":300000,"label":"¥100 = 30万字","badge":"囤货"}
+            ] %}
+            {% for pkg in packages %}
+            <div class="recharge-card" style="border:2px solid #e5e7eb;border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;transition:all .2s;position:relative;{% if pkg.badge=='推荐' %}border-color:#f59e0b;box-shadow:0 0 0 1px #f59e0b;{% endif %}"
+                 onmouseenter="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 25px rgba(0,0,0,.1)';"
+                 onmouseleave="this.style.transform='';this.style.boxShadow='';">
+                {% if pkg.badge %}
+                <span style="position:absolute;top:-10px;right:12px;background:{% if pkg.badge=='推荐' %}#f59e0b{% else %}#6366f1{% endif %};color:white;font-size:11px;padding:2px 10px;border-radius:10px;">{{ pkg.badge }}</span>
+                {% endif %}
+                <div style="font-size:28px;font-weight:800;color:#1f2937;margin-bottom:4px;">¥{{ pkg.amount }}</div>
+                <div style="font-size:14px;color:#6b7280;margin-bottom:12px;">{{ pkg.words }} 字</div>
+                <div style="font-size:12px;color:#9ca3af;margin-bottom:16px;">≈ ¥{{ "%.2f"|format(pkg.amount*1000/pkg.words) }}/千字</div>
+                {% if user %}
+                <button class="btn btn-primary btn-block" onclick="purchaseCredits({{ loop.index0 }})" style="font-size:14px;padding:8px;">立即充值</button>
+                {% else %}
+                <a href="{{ url_for('auth.login_page') }}" class="btn btn-outline btn-block" style="font-size:14px;padding:8px;">登录后充值</a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
         <!-- ==================== 会员套餐 ==================== -->
-        <div class="member-plans" style="max-width: 500px; margin: 40px auto;">
+        <h3 style="text-align:center; margin: 50px 0 20px;">👑 会员月卡</h3>
+        <div class="member-plans" style="max-width: 500px; margin: 0 auto 40px;">
             <div class="pricing-card pricing-recommended" style="border: 3px solid #f59e0b;">
                 <div class="pricing-badge pricing-badge-hot">🔥 超值推荐</div>
                 <h3>月度会员</h3>
@@ -38,7 +72,7 @@
                     <span class="price">¥{{ member_monthly_price }}</span>
                     <span class="price-unit">/月</span>
                 </div>
-                <p style="text-align:center; color:#6b7280;">每天不到1元，畅享专业检测</p>
+                <p style="text-align:center;color:#6b7280;">每天不到1元，畅享专业检测</p>
                 <ul class="pricing-features">
                     <li>✅ 每月 <strong>{{ member_monthly_quota }}字</strong> 检测额度</li>
                     <li>✅ AI检测 + 查重不限次数</li>
@@ -46,95 +80,34 @@
                     <li>✅ 语句润色优化免费</li>
                     <li>✅ 语病修正工具免费</li>
                     <li>✅ 报告无限次下载</li>
-                    <li>✅ 优先客服支持</li>
                 </ul>
-
                 {% if user %}
                     {% if quota_info and quota_info.is_member %}
                     <button class="btn btn-gold btn-block" disabled>✅ 已是会员</button>
-                    <p style="text-align:center;font-size:12px;color:#6b7280;margin-top:8px;">
-                        会员到期后将自动续费（可在设置中取消）
-                    </p>
                     {% else %}
                     <button class="btn btn-gold btn-block" onclick="purchaseMember()" id="btnPurchase">
                         💳 立即开通
                     </button>
-                    <p style="text-align:center;font-size:12px;color:#6b7280;margin-top:8px;">
-                        开通即生效，立即享受会员权益
-                    </p>
                     {% endif %}
                 {% else %}
-                <a href="{{ url_for('auth.login_page') }}?next={{ url_for('user.member_page') }}" class="btn btn-gold btn-block">
-                    登录后开通
-                </a>
+                <a href="{{ url_for('auth.login_page') }}" class="btn btn-gold btn-block">登录后开通</a>
                 {% endif %}
             </div>
         </div>
 
-        <!-- ==================== 价格对比表 ==================== -->
-        <div class="price-compare" style="margin-top: 50px;">
-            <h3 style="text-align:center; margin-bottom:20px;">📊 价格对比</h3>
-            <div class="compare-table-wrapper">
-                <table class="compare-table">
-                    <thead>
-                        <tr>
-                            <th>方案</th>
-                            <th>免费额度</th>
-                            <th>按次付费</th>
-                            <th>会员月卡</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>可用字数</td>
-                            <td>{{ free_quota_words }}字（一次性）</td>
-                            <td>按需购买</td>
-                            <td><strong>{{ member_monthly_quota }}字/月</strong></td>
-                        </tr>
-                        <tr>
-                            <td>价格</td>
-                            <td>免费</td>
-                            <td>¥1.5/千字起（阶梯）</td>
-                            <td><strong>¥{{ member_monthly_price }}/月</strong></td>
-                        </tr>
-                        <tr>
-                            <td>AI检测</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                        </tr>
-                        <tr>
-                            <td>查重服务</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                        </tr>
-                        <tr>
-                            <td>AI降重改写</td>
-                            <td>消耗额度</td>
-                            <td>消耗额度</td>
-                            <td><strong>✅ 免费</strong></td>
-                        </tr>
-                        <tr>
-                            <td>语句润色优化</td>
-                            <td>消耗额度</td>
-                            <td>消耗额度</td>
-                            <td><strong>✅ 免费</strong></td>
-                        </tr>
-                        <tr>
-                            <td>报告下载</td>
-                            <td>✅</td>
-                            <td>✅</td>
-                            <td>✅ 无限次</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        <!-- ==================== 为什么充值额度更好 ==================== -->
+        <div style="max-width:700px;margin:40px auto;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:24px;">
+            <h4 style="color:#16a34a;margin-bottom:12px;">💡 为什么选择充值额度？</h4>
+            <ul style="color:#15803d;font-size:14px;line-height:2;">
+                <li>✅ <strong>0.5元/千字</strong>，比按次付费便宜60%以上</li>
+                <li>✅ <strong>余额永不过期</strong>，随时用随时扣</li>
+                <li>✅ <strong>自动扣费</strong>，检测时优先用免费额度→充值额度</li>
+                <li>✅ <strong>透明消费</strong>，每次检测显示消耗字数</li>
+            </ul>
         </div>
 
-        <!-- ==================== 免责声明 ==================== -->
         <div class="disclaimer-inline" style="margin-top: 40px;">
-            ⚠️ 会员服务为虚拟商品，开通后不支持退款。续费可在用户中心取消。检测结果仅供参考。
+            ⚠️ 充值额度为虚拟商品，充值后不支持退款。检测结果仅供参考。
         </div>
     </div>
 </section>
@@ -142,11 +115,141 @@
 
 {% block extra_js %}
 <script>
-// 购买会员（真实支付流程）
+// 购买充值额度
+async function purchaseCredits(pkgIndex) {
+    try {
+        const resp = await fetch('{{ url_for("user.api_purchase_credits") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({package_index: pkgIndex}),
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            showToast(data.message, 'error');
+            return;
+        }
+        const order = data.order;
+        if (order.channel === 'mock') {
+            const confirmed = confirm(`确认充值 ¥${order.amount}（模拟支付）？`);
+            if (confirmed) {
+                const cr = await fetch(order.pay_url + '&order_type=recharge');
+                const cd = await cr.json();
+                showToast(cd.message, cd.success ? 'success' : 'error');
+                if (cd.success) setTimeout(() => location.reload(), 1500);
+            }
+        } else {
+            showPayModal(order);
+        }
+    } catch (e) {
+        showToast('网络异常', 'error');
+    }
+}
+
+// 购买会员
 async function purchaseMember() {
     const btn = document.getElementById('btnPurchase');
     btn.disabled = true;
     btn.textContent = '创建订单中...';
+    try {
+        const resp = await fetch('{{ url_for("user.api_purchase_member") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await resp.json();
+        if (!data.success) {
+            showToast(data.message, 'error');
+            btn.disabled = false;
+            btn.textContent = '💳 立即开通';
+            return;
+        }
+        const order = data.order;
+        if (order.channel === 'mock') {
+            const confirmed = confirm(`确认支付 ¥${order.amount} 开通会员？（模拟支付）`);
+            if (confirmed) {
+                const cr = await fetch(order.pay_url + '&order_type=member');
+                const cd = await cr.json();
+                showToast(cd.message, cd.success ? 'success' : 'error');
+                if (cd.success) setTimeout(() => location.reload(), 1500);
+            }
+        } else {
+            showPayModal(order);
+        }
+    } catch (e) {
+        showToast('网络异常', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '💳 立即开通';
+    }
+}
+
+function showPayModal(order) {
+    const isXorpay = order.channel === 'xorpay';
+    const payTypeLabel = isXorpay ? '微信/支付宝扫码支付' :
+        order.channel === 'wechat' ? '请使用微信扫码支付' : '请使用支付宝扫码支付';
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    modal.innerHTML = `
+        <div style="background:white;border-radius:16px;padding:40px;text-align:center;max-width:420px;width:90%;">
+            <h3 style="margin-bottom:8px;">💳 扫码支付</h3>
+            <p style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;">
+                支付金额：<strong style="font-size:28px;color:var(--primary);">¥${order.amount}</strong>
+            </p>
+            <div style="background:#f8fafc;padding:20px;border-radius:12px;margin-bottom:16px;">
+                <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">${payTypeLabel}</p>
+                <div style="width:200px;height:200px;margin:12px auto;background:white;border:1px solid #e5e7eb;display:flex;align-items:center;justify-content:center;border-radius:8px;overflow:hidden;">
+                    ${isXorpay ?
+                        '<img src="' + order.qr_code + '" style="width:100%;height:100%;" alt="支付二维码" onerror="this.parentElement.innerHTML=\\'<span style=color:var(--text-muted)>二维码加载失败<br>请刷新重试</span>\\'">' :
+                        '<span style="color:var(--text-muted);font-size:13px;">支付二维码<br><small>（接入密钥后自动显示）</small></span>'
+                    }
+                </div>
+                <p style="font-size:11px;color:var(--text-muted);">订单号：${order.order_id}</p>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:center;">
+                <button class="btn btn-primary" onclick="completePay('${order.order_id}','${order.pay_url}')">✅ 已完成支付</button>
+                <button class="btn btn-outline" onclick="this.closest('div[style*=fixed]').remove()">取消</button>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">
+                ${isXorpay ? '支持微信/支付宝扫码支付' : '⚠️ 支付密钥未配置，当前为模拟模式'}
+            </p>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function completePay(orderId, payUrl) {
+    try {
+        const cr = await fetch(payUrl + (payUrl.includes('?') ? '&' : '?') + 'order_type=recharge');
+        const cd = await cr.json();
+        showToast(cd.message, cd.success ? 'success' : 'error');
+        if (cd.success) setTimeout(() => location.reload(), 1500);
+    } catch(e) {
+        showToast('请稍后重试', 'error');
+    }
+}
+
+async function checkPayStatus(orderId) {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '查询中...';
+    try {
+        const resp = await fetch('/user/api/check-pay?order_id=' + orderId);
+        const data = await resp.json();
+        if (data.success) {
+            showToast('支付成功！', 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast('未检测到支付，请确认已扫码付款', 'warning');
+            btn.disabled = false;
+            btn.textContent = '✅ 已完成支付';
+        }
+    } catch(e) {
+        showToast('查询失败，请重试', 'error');
+        btn.disabled = false;
+        btn.textContent = '✅ 已完成支付';
+    }
+}
+</script>
+{% endblock %}
 
     try {
         // 1. 创建支付订单

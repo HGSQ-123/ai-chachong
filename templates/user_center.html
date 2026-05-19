@@ -31,18 +31,28 @@
                 <div class="quota-card-icon">🎁</div>
                 <div class="quota-card-info">
                     <span class="quota-card-label">免费额度剩余</span>
-                    <span class="quota-card-value">{{ quota_info.free_quota_remaining }}</span>
+                    <span class="quota-card-value">{{ quota_info.free_remaining }}</span>
                     <span class="quota-card-unit">字</span>
                 </div>
             </div>
             <div class="quota-card">
-                <div class="quota-card-icon">👑</div>
+                <div class="quota-card-icon">💳</div>
                 <div class="quota-card-info">
-                    <span class="quota-card-label">会员额度剩余</span>
-                    <span class="quota-card-value">{{ quota_info.member_quota_remaining }}</span>
+                    <span class="quota-card-label">充值额度剩余</span>
+                    <span class="quota-card-value">{{ quota_info.credits }}</span>
                     <span class="quota-card-unit">字</span>
                 </div>
             </div>
+            {% if quota_info.is_member %}
+            <div class="quota-card">
+                <div class="quota-card-icon">👑</div>
+                <div class="quota-card-info">
+                    <span class="quota-card-label">会员额度剩余</span>
+                    <span class="quota-card-value">{{ quota_info.member_remaining }}</span>
+                    <span class="quota-card-unit">字</span>
+                </div>
+            </div>
+            {% endif %}
             <div class="quota-card">
                 <div class="quota-card-icon">📊</div>
                 <div class="quota-card-info">
@@ -66,7 +76,7 @@
             <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">🔍 新建检测</a>
             <a href="{{ url_for('main.tools_page') }}" class="btn btn-outline">✨ AI工具</a>
             {% if not quota_info.is_member %}
-            <a href="{{ url_for('user.member_page') }}" class="btn btn-gold">👑 开通会员</a>
+            <a href="{{ url_for('user.member_page') }}" class="btn btn-gold">� 充值额度</a>
             {% endif %}
             <a href="{{ url_for('user.invite_page') }}" class="btn btn-outline">🎁 邀请好友(+1000字)</a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">🚪 退出登录</a>

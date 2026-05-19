@@ -40,30 +40,18 @@ class Config:
     # 文件自动清理时间（秒）
     FILE_CLEANUP_SECONDS = int(os.getenv("FILE_CLEANUP_HOURS", 1)) * 3600
 
-    # ==================== 阶梯价格配置（元/千字） ====================
-    PRICING_TIERS = [
-        {
-            "max_words": int(os.getenv("PRICE_TIER_1_LIMIT", 5000)),
-            "price_per_k": float(os.getenv("PRICE_TIER_1_PRICE", 1.5)),
-            "label": "5,000字以内",
-        },
-        {
-            "max_words": int(os.getenv("PRICE_TIER_2_LIMIT", 20000)),
-            "price_per_k": float(os.getenv("PRICE_TIER_2_PRICE", 1.2)),
-            "label": "5,001-20,000字",
-        },
-        {
-            "max_words": float("inf"),
-            "price_per_k": float(os.getenv("PRICE_TIER_3_PRICE", 0.9)),
-            "label": "20,000字以上",
-        },
+    # ==================== 充值额度配置（元/千字） ====================
+    # 基础单价：0.5元/1000字
+    CREDIT_PRICE_PER_K = float(os.getenv("CREDIT_PRICE_PER_K", 0.5))
+    
+    # 充值套餐（金额 → 字数）
+    RECHARGE_PACKAGES = [
+        {"amount": 5.0,   "words": 10000,  "label": "¥5 = 1万字",   "badge": "入门"},
+        {"amount": 10.0,  "words": 20000,  "label": "¥10 = 2万字",  "badge": "实惠"},
+        {"amount": 20.0,  "words": 50000,  "label": "¥20 = 5万字",  "badge": "推荐"},
+        {"amount": 50.0,  "words": 150000, "label": "¥50 = 15万字", "badge": "超值"},
+        {"amount": 100.0, "words": 300000, "label": "¥100 = 30万字","badge": "囤货"},
     ]
-
-    # AI检测单独定价（仅AI生成率，不含查重）
-    AI_DETECTION_PRICE = float(os.getenv("AI_DETECTION_PRICE", 1.4))
-
-    # AI降重改写定价
-    AI_REWRITE_PRICE = float(os.getenv("AI_REWRITE_PRICE", 5.0))
 
     # ==================== 会员配置 ====================
     MEMBER_MONTHLY_PRICE = float(os.getenv("MEMBER_MONTHLY_PRICE", 19.9))

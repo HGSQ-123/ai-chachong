@@ -133,8 +133,8 @@
 <section class="section-padding">
     <div class="container">
         <div class="section-header">
-            <h2 class="section-title">灵活的价格方案</h2>
-            <p class="section-desc">免费额度引流 + 阶梯付费 + 会员月卡，满足不同需求</p>
+            <h2 class="section-title">💰 充值额度 · 灵活实惠</h2>
+            <p class="section-desc">0.5元/千字 · 先充值后消费 · 余额永不过期</p>
         </div>
         <div class="pricing-grid">
             <div class="pricing-card">
@@ -144,7 +144,7 @@
                     <span class="price">¥0</span>
                 </div>
                 <ul class="pricing-features">
-                    <li>✅ {{ free_quota_words }}字免费额度</li>
+                    <li>✅ 首次检测免费</li>
                     <li>✅ AI生成率检测</li>
                     <li>✅ 全网重复率查重</li>
                     <li>✅ 详细检测报告</li>
@@ -153,19 +153,19 @@
                 <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline btn-block">免费注册</a>
             </div>
             <div class="pricing-card">
-                <h3>按次付费</h3>
+                <h3>充值额度</h3>
                 <div class="pricing-price">
-                    <span class="price">¥0.5</span>
-                    <span class="price-unit">/千字起</span>
+                    <span class="price">¥5</span>
+                    <span class="price-unit">起充</span>
                 </div>
                 <ul class="pricing-features">
-                    <li>✅ 阶梯价格更优惠</li>
-                    <li>✅ 低至0.9元/千字</li>
-                    <li>✅ 按需购买不浪费</li>
-                    <li>✅ 所有检测功能</li>
-                    <li>✅ 永久有效</li>
+                    <li>✅ 0.5元/千字超低价</li>
+                    <li>✅ 余额永不过期</li>
+                    <li>✅ 自动扣费无需每次支付</li>
+                    <li>✅ ¥5=1万字 / ¥20=5万字</li>
+                    <li>✅ ¥100=30万字最划算</li>
                 </ul>
-                <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary btn-block">开始检测</a>
+                <a href="{{ url_for('user.member_page') }}" class="btn btn-primary btn-block">立即充值</a>
             </div>
             <div class="pricing-card pricing-recommended">
                 <div class="pricing-badge pricing-badge-hot">🔥 推荐</div>
@@ -211,7 +211,7 @@
             </details>
             <details class="faq-item">
                 <summary>免费额度用完了怎么办？</summary>
-                <p>首次检测免费！之后按次付费仅需0.5元/千字起（字数越多越便宜），或开通会员月卡¥{{ member_monthly_price }}/月享{{ member_monthly_quota }}字额度。</p>
+                <p>首次检测完全免费！之后只需充值额度即可继续使用，0.5元/千字，¥5起充。充值余额永不过期，自动扣费超方便。也可开通会员月卡¥{{ member_monthly_price }}/月享{{ member_monthly_quota }}字额度。</p>
             </details>
             <details class="faq-item">
                 <summary>支持哪些文件格式？</summary>

@@ -97,7 +97,6 @@ def api_send_code():
 
 
 @auth_bp.route("/api/login", methods=["POST"])
-@guest_only
 def api_login():
     """
     登录（支持用户名/手机号/邮箱 + 密码）
@@ -147,7 +146,6 @@ def api_login():
 
 
 @auth_bp.route("/api/register", methods=["POST"])
-@guest_only
 def api_register():
     """
     注册（支持手机号或邮箱 + 验证码）

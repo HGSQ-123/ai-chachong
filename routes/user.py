@@ -162,26 +162,80 @@ def api_purchase_member():
     })
 
 
+@user_bp.route("/api/purchase-credits", methods=["POST"])
+@login_required
+def api_purchase_credits():
+    """
+    购买充值额度API
+    请求: {"package_index": 0-4}
+    0=¥5/1万字 1=¥10/2万字 2=¥20/5万字 3=¥50/15万字 4=¥100/30万字
+    """
+    from services.payment import PaymentService
+
+    data = request.get_json() or {}
+    pkg_index = data.get("package_index", 0)
+    
+    packages = config.RECHARGE_PACKAGES
+    if pkg_index < 0 or pkg_index >= len(packages):
+        return jsonify({"success": False, "message": "无效的充值套餐"}), 400
+
+    pkg = packages[pkg_index]
+    user_id = session["user_id"]
+    
+    # 创建支付订单
+    order = PaymentService.create_order(
+        user_id=user_id,
+        amount=pkg["amount"],
+        description=f"{config.SITE_NAME} - {pkg['label']}",
+        order_type="recharge",
+    )
+
+    if not order["success"]:
+        return jsonify({"success": False, "message": "创建订单失败"}), 500
+
+    return jsonify({
+        "success": True,
+        "message": "订单已创建",
+        "order": {
+            "order_id": order["order_id"],
+            "amount": order["amount"],
+            "qr_code": order["qr_code"],
+            "pay_url": order["pay_url"],
+            "channel": order["channel"],
+        },
+        "package": pkg,
+    })
+
+
 @user_bp.route("/api/pay-mock-confirm")
 def api_pay_mock_confirm():
     """
     模拟支付确认（测试用）
-    实际生产中由支付平台回调 /api/pay-callback/wechat 或 alipay
+    实际生产中由支付平台回调
     """
     order_id = request.args.get("order_id", "")
     user_id = request.args.get("user_id", 0, type=int)
     amount = request.args.get("amount", 0, type=float)
+    order_type = request.args.get("order_type", "member")
 
     if not order_id or not user_id:
         return jsonify({"success": False, "message": "参数错误"}), 400
 
-    # 直接开通会员
-    result = BillingService.purchase_member(user_id)
+    if order_type == "recharge":
+        # 找到对应套餐
+        pkg_index = 0
+        for i, pkg in enumerate(config.RECHARGE_PACKAGES):
+            if abs(pkg["amount"] - amount) < 0.01:
+                pkg_index = i
+                break
+        result = BillingService.purchase_credits(user_id, pkg_index)
+    else:
+        result = BillingService.purchase_member(user_id)
 
     if result["success"]:
         return jsonify({
             "success": True,
-            "message": f"支付成功！会员已开通（模拟）",
+            "message": result.get("message", "支付成功！"),
             "amount": amount,
         })
     else:

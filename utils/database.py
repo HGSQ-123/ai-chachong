@@ -64,6 +64,8 @@ class DatabaseManager:
                     email TEXT UNIQUE NOT NULL,
                     phone TEXT DEFAULT '',
                     password_hash TEXT NOT NULL,
+                    balance REAL DEFAULT 0,
+                    credits INTEGER DEFAULT 0,
                     free_quota_used INTEGER DEFAULT 0,
                     referral_code TEXT UNIQUE,
                     referred_by INTEGER,
@@ -79,6 +81,8 @@ class DatabaseManager:
             # 兼容旧表
             for col_sql in [
                 "ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",
+                "ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN referral_code TEXT UNIQUE",
                 "ALTER TABLE users ADD COLUMN referred_by INTEGER",
                 "ALTER TABLE users ADD COLUMN referral_reward_claimed INTEGER DEFAULT 0",
@@ -410,6 +414,47 @@ class DatabaseManager:
                 "total_detections": total_detections,
                 "total_words": total_words,
                 "monthly_detections": monthly_detections,
+            }
+
+
+    # ==================== 充值额度相关操作 ====================
+
+    def add_credits(self, user_id: int, words: int, amount: float) -> bool:
+        """充值额度：增加余额记录和可用字数"""
+        with self.get_connection() as conn:
+            conn.execute(
+                "UPDATE users SET credits = credits + ?, balance = balance + ? WHERE id = ?",
+                (words, amount, user_id)
+            )
+            return True
+
+    def deduct_credits(self, user_id: int, words: int) -> bool:
+        """扣除字数额度（检测消耗）"""
+        with self.get_connection() as conn:
+            user = conn.execute("SELECT credits FROM users WHERE id = ?", (user_id,)).fetchone()
+            if not user or user["credits"] < words:
+                return False
+            conn.execute(
+                "UPDATE users SET credits = credits - ? WHERE id = ?",
+                (words, user_id)
+            )
+            return True
+
+    def get_user_credits(self, user_id: int) -> dict:
+        """获取用户额度信息"""
+        with self.get_connection() as conn:
+            row = conn.execute(
+                "SELECT balance, credits, free_quota_used FROM users WHERE id = ?",
+                (user_id,)
+            ).fetchone()
+            if not row:
+                return {"balance": 0, "credits": 0, "free_remaining": 0}
+            free_remaining = max(0, 5000 - row["free_quota_used"])
+            return {
+                "balance": row["balance"],
+                "credits": row["credits"],
+                "free_remaining": free_remaining,
+                "total_available": free_remaining + row["credits"],
             }
 
 

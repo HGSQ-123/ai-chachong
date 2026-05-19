@@ -71,21 +71,22 @@ def api_config_status():
         "deepseek": {
             "configured": DeepSeekClient.is_configured(),
             "label": "AI降重改写",
-            "price": f"¥{config.AI_REWRITE_PRICE}/千字",
+            "price": f"¥{config.CREDIT_PRICE_PER_K}/千字",
         },
         "ai_detection": {
             "configured": AIDetectionAPIClient.is_configured(),
             "label": "AI生成检测",
-            "price": f"¥{config.AI_DETECTION_PRICE}/千字",
+            "price": f"¥{config.CREDIT_PRICE_PER_K}/千字",
         },
         "plagiarism": {
             "configured": PlagiarismAPIClient.is_configured(),
             "label": "全网查重",
-            "price": f"¥{config.PRICING_TIERS[0]['price_per_k']}/千字起",
+            "price": f"¥{config.CREDIT_PRICE_PER_K}/千字",
         },
         "pricing": {
             "free_quota": config.FREE_QUOTA_WORDS,
             "member_price": config.MEMBER_MONTHLY_PRICE,
-            "tiers": config.PRICING_TIERS,
+            "credit_price": config.CREDIT_PRICE_PER_K,
+            "packages": config.RECHARGE_PACKAGES,
         }
     })

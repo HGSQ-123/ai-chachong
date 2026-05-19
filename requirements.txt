@@ -6,7 +6,12 @@
 Flask>=3.0                    # Web框架
 Werkzeug>=3.0                 # WSGI工具库（密码哈希）
 python-docx>=1.1.2            # Word文档解析
-PyPDF2>=3.0.1                 # PDF文档解析
+PyPDF2>=3.0.1                 # PDF解析引擎1（文本PDF）
+pdfplumber>=0.10              # PDF解析引擎2（复杂排版）
+PyMuPDF>=1.23                 # PDF解析引擎3（最强兼容）
+pytesseract>=0.3              # OCR识别引擎
+pdf2image>=1.16               # PDF转图片（OCR前处理）
+Pillow>=10.0                  # 图片处理
 python-dotenv>=1.0            # 环境变量加载
 requests>=2.31                # HTTP请求（支付API/第三方API调用）
 gunicorn>=23.0                # 生产环境WSGI服务器

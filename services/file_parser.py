@@ -121,57 +121,117 @@ class FileParser:
     @classmethod
     def _parse_pdf(cls, filepath: str, filename: str) -> dict:
         """
-        解析PDF文档
-        使用PyPDF2库提取文本
-        注意：扫描版图片PDF无法提取文字，需用OCR工具
+        解析PDF文档 - 多引擎 + OCR全覆盖
+        策略：PyMuPDF → pdfplumber → PyPDF2 → OCR
+        自动选择最佳结果，扫描版图片PDF也能识别
         """
-        try:
-            from PyPDF2 import PdfReader
-        except ImportError:
-            return {
-                "success": False, "text": "", "word_count": 0,
-                "error": "缺少PyPDF2依赖，请运行: pip install PyPDF2",
-                "file_type": "pdf",
-            }
+        from utils.helpers import count_chinese_words
 
+        engines_results = []
+
+        # ========== 引擎1：PyMuPDF（最强，支持最多格式）==========
         try:
-            reader = PdfReader(filepath)
-            total_pages = len(reader.pages)
+            import fitz  # PyMuPDF
+            doc = fitz.open(filepath)
+            total_pages = len(doc)
             pages_text = []
+            for page in doc:
+                text = page.get_text()
+                if text and text.strip():
+                    pages_text.append(text.strip())
+            doc.close()
+            text = "\n".join(pages_text)
+            wc = count_chinese_words(text)
+            if wc > 5:
+                engines_results.append(("PyMuPDF", text, wc))
+        except Exception:
+            pass
 
-            for i, page in enumerate(reader.pages):
-                try:
+        # ========== 引擎2：pdfplumber（复杂排版友好）==========
+        try:
+            import pdfplumber
+            with pdfplumber.open(filepath) as pdf:
+                pages_text = []
+                for page in pdf.pages:
                     text = page.extract_text()
                     if text and text.strip():
                         pages_text.append(text.strip())
-                except Exception:
-                    # 单页解析失败，跳过
-                    continue
+            text = "\n".join(pages_text)
+            wc = count_chinese_words(text)
+            if wc > 5:
+                # 如果pdfplumber结果更好，替换
+                engines_results.append(("pdfplumber", text, wc))
+        except Exception:
+            pass
 
-            full_text = "\n".join(pages_text)
-
-            # 检查是否为加密PDF
+        # ========== 引擎3：PyPDF2（最基础）==========
+        try:
+            from PyPDF2 import PdfReader
+            reader = PdfReader(filepath)
+            # 检查加密
             if reader.is_encrypted:
                 return {
                     "success": False, "text": "", "word_count": 0,
-                    "error": "PDF文件已加密，请先解密后再上传",
+                    "error": "PDF已加密，请先解除密码保护",
                     "file_type": "pdf",
                 }
+            pages_text = []
+            for page in reader.pages:
+                text = page.extract_text()
+                if text and text.strip():
+                    pages_text.append(text.strip())
+            text = "\n".join(pages_text)
+            wc = count_chinese_words(text)
+            if wc > 5:
+                engines_results.append(("PyPDF2", text, wc))
+        except Exception:
+            pass
 
-            # 没有任何文字内容
-            if not full_text.strip():
-                return {
-                    "success": False, "text": "", "word_count": 0,
-                    "error": f"无法提取文字（共{total_pages}页）\n"
-                             "可能原因：\n"
-                             "1. PDF是扫描版图片（需用WPS/Adobe导出为文字版PDF）\n"
-                             "2. PDF文字被加密保护\n"
-                             "3. 建议：用WPS打开 → 另存为 → 选择「标准PDF」",
-                    "file_type": "pdf",
-                }
+        # ========== 引擎4：OCR（扫描版图片PDF的最后手段）==========
+        ocr_text = ""
+        for attempt in range(2):
+            try:
+                from pdf2image import convert_from_path
+                import pytesseract
+                from PIL import Image
 
-            from utils.helpers import count_chinese_words
-            word_count = count_chinese_words(full_text)
+                # 转换PDF为图片
+                images = convert_from_path(filepath, dpi=200, first_page=1, last_page=20)
+                ocr_pages = []
+                for img in images:
+                    # 中英文混合OCR
+                    page_text = pytesseract.image_to_string(img, lang='chi_sim+eng')
+                    if page_text and page_text.strip():
+                        ocr_pages.append(page_text.strip())
+                ocr_text = "\n".join(ocr_pages)
+                wc = count_chinese_words(ocr_text)
+                if wc > 5:
+                    engines_results.append(("OCR识别", ocr_text, wc))
+                break
+            except Exception:
+                if attempt == 0:
+                    # 第一次失败，尝试只用英文OCR
+                    try:
+                        from pdf2image import convert_from_path
+                        import pytesseract
+                        images = convert_from_path(filepath, dpi=150, first_page=1, last_page=20)
+                        ocr_pages = []
+                        for img in images:
+                            page_text = pytesseract.image_to_string(img, lang='eng')
+                            if page_text and page_text.strip():
+                                ocr_pages.append(page_text.strip())
+                        ocr_text = "\n".join(ocr_pages)
+                        wc = count_chinese_words(ocr_text)
+                        if wc > 5:
+                            engines_results.append(("OCR(英文)", ocr_text, wc))
+                    except Exception:
+                        pass
+
+        # ========== 选择最佳结果 ==========
+        if engines_results:
+            # 取字数最多的结果
+            best = max(engines_results, key=lambda x: x[2])
+            engine_name, full_text, word_count = best
 
             return {
                 "success": True,
@@ -180,12 +240,19 @@ class FileParser:
                 "error": "",
                 "file_type": "pdf",
             }
-        except Exception as e:
-            return {
-                "success": False, "text": "", "word_count": 0,
-                "error": f"PDF解析异常：{str(e)}",
-                "file_type": "pdf",
-            }
+
+        # ========== 全部失败 ==========
+        return {
+            "success": False,
+            "text": ocr_text if ocr_text else "",
+            "word_count": count_chinese_words(ocr_text) if ocr_text else 0,
+            "error": "所有PDF解析引擎均无法提取文字\n\n"
+                     "可能原因：\n"
+                     "1. PDF是纯图片扫描版且OCR未安装\n"
+                     "2. PDF文件已损坏\n"
+                     "3. 建议：用WPS打开 → 另存为.docx → 上传Word文件",
+            "file_type": "pdf",
+        }
 
     @classmethod
     def _parse_txt(cls, filepath: str, filename: str) -> dict:

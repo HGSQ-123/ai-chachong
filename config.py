@@ -38,10 +38,10 @@ class Config:
     REDUCE_AI_FIRST_PRICE = float(os.getenv("REDUCE_AI_FIRST_PRICE", 2.0))         # 首次降低AI率 ¥2
     REDUCE_PLAGIARISM_FIRST_PRICE = float(os.getenv("REDUCE_PLAGIARISM_FIRST_PRICE", 2.0))  # 首次降查重 ¥2
     REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.5))                # 后续0.5元/千字
-    REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 5000))                      # 单次最多5000字
+    REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 100000))                     # 单次最多100000字
 
     # 单次最大检测字数
-    MAX_DETECTION_WORDS = int(os.getenv("MAX_DETECTION_WORDS", 50000))
+    MAX_DETECTION_WORDS = int(os.getenv("MAX_DETECTION_WORDS", 100000))
 
     # 文件自动清理时间（秒）
     FILE_CLEANUP_SECONDS = int(os.getenv("FILE_CLEANUP_HOURS", 1)) * 3600

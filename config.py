@@ -6,10 +6,13 @@
 """
 
 import os
-from dotenv import load_dotenv
 
-# 加载.env环境变量文件
-load_dotenv()
+# 安全加载.env（不存在则跳过，使用环境变量）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except (ImportError, Exception):
+    pass  # 生产环境通过Render dashboard设置环境变量
 
 
 class Config:

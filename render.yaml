@@ -14,6 +14,10 @@ services:
       - key: SECRET_KEY
         sync: false
       - key: PYTHON_VERSION
-        value: 3.11
+        value: "3.11"
       - key: PORT
-        value: 10000
+        value: "10000"
+      - key: XORPAY_APP_ID
+        sync: false
+      - key: XORPAY_API_SECRET
+        sync: false

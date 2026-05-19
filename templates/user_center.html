@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}用户中心 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <h2 class="section-title">👤 用户中心</h2>
+
+        <!-- ==================== 用户信息卡片 ==================== -->
+        <div class="user-info-card">
+            <div class="user-info-header">
+                <div class="user-avatar">👤</div>
+                <div class="user-details">
+                    <h3>{{ user.username }}</h3>
+                    <p>{{ user.email }}</p>
+                    <p class="user-since">注册时间：{{ user.created_at }}</p>
+                </div>
+                <div class="user-badge">
+                    {% if quota_info.is_member %}
+                    <span class="badge badge-gold">👑 会员</span>
+                    {% else %}
+                    <span class="badge badge-gray">普通用户</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 额度概览 ==================== -->
+        <div class="quota-dashboard">
+            <div class="quota-card">
+                <div class="quota-card-icon">🎁</div>
+                <div class="quota-card-info">
+                    <span class="quota-card-label">免费额度剩余</span>
+                    <span class="quota-card-value">{{ quota_info.free_quota_remaining }}</span>
+                    <span class="quota-card-unit">字</span>
+                </div>
+            </div>
+            <div class="quota-card">
+                <div class="quota-card-icon">👑</div>
+                <div class="quota-card-info">
+                    <span class="quota-card-label">会员额度剩余</span>
+                    <span class="quota-card-value">{{ quota_info.member_quota_remaining }}</span>
+                    <span class="quota-card-unit">字</span>
+                </div>
+            </div>
+            <div class="quota-card">
+                <div class="quota-card-icon">📊</div>
+                <div class="quota-card-info">
+                    <span class="quota-card-label">总检测次数</span>
+                    <span class="quota-card-value">{{ stats.total_detections }}</span>
+                    <span class="quota-card-unit">次</span>
+                </div>
+            </div>
+            <div class="quota-card">
+                <div class="quota-card-icon">📝</div>
+                <div class="quota-card-info">
+                    <span class="quota-card-label">累计检测字数</span>
+                    <span class="quota-card-value">{{ stats.total_words }}</span>
+                    <span class="quota-card-unit">字</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 快捷操作 ==================== -->
+        <div class="quick-actions">
+            <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">🔍 新建检测</a>
+            <a href="{{ url_for('main.tools_page') }}" class="btn btn-outline">✨ AI工具</a>
+            {% if not quota_info.is_member %}
+            <a href="{{ url_for('user.member_page') }}" class="btn btn-gold">👑 开通会员</a>
+            {% endif %}
+            <a href="{{ url_for('user.invite_page') }}" class="btn btn-outline">🎁 邀请好友(+1000字)</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">🚪 退出登录</a>
+        </div>
+
+        <!-- ==================== 邀请裂变卡片 ==================== -->
+        {% if referral_stats %}
+        <div class="content-card" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-color: #f59e0b; margin-bottom:24px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+                <div>
+                    <h3 style="margin:0 0 4px 0;">🎁 邀请好友 · 双方各得1000字</h3>
+                    <p style="margin:0; font-size:13px; color: var(--text-secondary);">
+                        已邀请 <strong>{{ referral_stats.invited_count }}</strong> 人 · 
+                        获得 <strong>{{ referral_stats.total_reward_words }}</strong> 字奖励
+                    </p>
+                </div>
+                <a href="{{ url_for('user.invite_page') }}" class="btn btn-gold">📋 获取邀请链接</a>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ==================== 检测记录列表 ==================== -->
+        <div class="records-section">
+            <h3>📋 检测记录</h3>
+            {% if records %}
+            <div class="records-table-wrapper">
+                <table class="records-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>文件名/类型</th>
+                            <th>字数</th>
+                            <th>AI得分</th>
+                            <th>重复率</th>
+                            <th>原创得分</th>
+                            <th>时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in records %}
+                        <tr>
+                            <td>#{{ rec.id }}</td>
+                            <td>{{ rec.file_name or '粘贴文本' }}</td>
+                            <td>{{ rec.word_count }}字</td>
+                            <td>
+                                <span class="score-tag" style="color: {% if rec.ai_score > 50 %}#ef4444{% elif rec.ai_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">
+                                    {{ rec.ai_score|round(1) }}%
+                                </span>
+                            </td>
+                            <td>
+                                <span class="score-tag" style="color: {% if rec.plagiarism_score > 50 %}#ef4444{% elif rec.plagiarism_score > 30 %}#f59e0b{% else %}#10b981{% endif %};">
+                                    {{ rec.plagiarism_score|round(1) }}%
+                                </span>
+                            </td>
+                            <td>
+                                {% set orig = rec.report_data.originality_score if rec.report_data is mapping else 0 %}
+                                <span class="score-tag" style="color: {% if orig >= 80 %}#10b981{% elif orig >= 60 %}#f59e0b{% elif orig >= 40 %}#f97316{% else %}#ef4444{% endif %};">
+                                    {{ orig }}分
+                                </span>
+                            </td>
+                            <td>{{ rec.created_at[:16] if rec.created_at else '' }}</td>
+                            <td>
+                                <a href="{{ url_for('detect.report_page', record_id=rec.id) }}" class="btn btn-text-sm">查看报告</a>
+                                <a href="{{ url_for('detect.download_report', record_id=rec.id) }}" class="btn btn-text-sm">下载</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <p>暂无检测记录</p>
+                <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">开始检测</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

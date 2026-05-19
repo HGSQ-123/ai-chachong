@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}检测报告 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <!-- ==================== 报告头部 ==================== -->
+        <div class="report-header">
+            <div class="report-header-left">
+                <h2>📋 检测报告</h2>
+                <p class="report-meta">
+                    检测时间：{{ record.created_at }} |
+                    字数：{{ record.word_count }}字
+                    {% if report.file_name %} | 文件：{{ report.file_name }}{% endif %}
+                </p>
+                <p class="report-meta">
+                    检测方式：AI检测({{ report.ai_method }}) + 查重({{ report.plagiarism_method }})
+                </p>
+            </div>
+            <div class="report-header-right">
+                <a href="{{ url_for('detect.download_report', record_id=record.id) }}" class="btn btn-outline">
+                    📥 下载报告
+                </a>
+                <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">
+                    🔄 新建检测
+                </a>
+            </div>
+        </div>
+
+        <!-- ==================== 原创得分大卡片 ==================== -->
+        <div class="score-hero">
+            <div class="score-circle-large" style="--score: {{ report.originality_score }};">
+                <span class="score-number">{{ report.originality_score }}</span>
+                <span class="score-unit">分</span>
+            </div>
+            <div class="score-label">总体原创得分</div>
+            <div class="score-grade" id="scoreGrade">
+                {% if report.originality_score >= 80 %}
+                🟢 优秀 - 原创度较高
+                {% elif report.originality_score >= 60 %}
+                🟡 良好 - 建议优化部分内容
+                {% elif report.originality_score >= 40 %}
+                🟠 一般 - 建议深度修改
+                {% else %}
+                🔴 较低 - 需要大幅修改
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ==================== 分项得分 ==================== -->
+        <div class="score-breakdown">
+            <div class="score-item-card">
+                <div class="score-item-header">
+                    <span class="score-item-icon">🤖</span>
+                    <h3>AI生成率</h3>
+                </div>
+                <div class="score-item-value" style="color: {% if report.ai_score > 50 %}#ef4444{% elif report.ai_score > 30 %}#f59e0b{% else %}#10b981{% endif %}">
+                    {{ report.ai_score }}%
+                </div>
+                <p class="score-item-desc">AI撰写占比</p>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width:{{ report.ai_score }}%; background: {% if report.ai_score > 50 %}#ef4444{% elif report.ai_score > 30 %}#f59e0b{% else %}#10b981{% endif %};"></div>
+                </div>
+                {% if report.ai_details %}
+                <div class="score-details">
+                    {% for detail in report.ai_details %}
+                    <div class="detail-row">
+                        <span>{{ detail.label }}</span>
+                        <span>{{ detail.value }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="score-item-card">
+                <div class="score-item-header">
+                    <span class="score-item-icon">👤</span>
+                    <h3>人工原创率</h3>
+                </div>
+                <div class="score-item-value text-green">{{ report.human_score }}%</div>
+                <p class="score-item-desc">人工撰写占比</p>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width:{{ report.human_score }}%; background: #10b981;"></div>
+                </div>
+            </div>
+
+            <div class="score-item-card">
+                <div class="score-item-header">
+                    <span class="score-item-icon">📊</span>
+                    <h3>文本重复率</h3>
+                </div>
+                <div class="score-item-value" style="color: {% if report.plagiarism_score > 50 %}#ef4444{% elif report.plagiarism_score > 30 %}#f59e0b{% else %}#10b981{% endif %}">
+                    {{ report.plagiarism_score }}%
+                </div>
+                <p class="score-item-desc">查重匹配率</p>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width:{{ report.plagiarism_score }}%; background: {% if report.plagiarism_score > 50 %}#ef4444{% elif report.plagiarism_score > 30 %}#f59e0b{% else %}#10b981{% endif %};"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 重复片段详情 ==================== -->
+        {% if report.matched_segments %}
+        <div class="report-section">
+            <h3>🔴 重复/相似片段</h3>
+            <p class="report-section-desc">以下片段与数据库存在相似匹配，建议进行改写或正确引用</p>
+            {% for seg in report.matched_segments %}
+            <div class="matched-segment">
+                <div class="matched-text">{{ seg.text }}</div>
+                <div class="matched-meta">
+                    <span class="matched-similarity">相似度：{{ seg.similarity }}%</span>
+                    <span class="matched-source">📚 {{ seg.source }}</span>
+                    <span class="matched-position">📍 {{ seg.position }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ==================== 来源出处 ==================== -->
+        {% if report.sources %}
+        <div class="report-section">
+            <h3>📚 可能来源出处</h3>
+            <ul class="source-list">
+                {% for source in report.sources %}
+                <li class="source-item">{{ source }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- ==================== 优化建议 ==================== -->
+        <div class="report-section">
+            <h3>💡 AI检测建议</h3>
+            <ul class="suggestion-list">
+                {% for s in report.ai_suggestions %}
+                <li class="suggestion-item">{{ s }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="report-section">
+            <h3>💡 查重优化建议</h3>
+            <ul class="suggestion-list">
+                {% for s in report.plagiarism_suggestions %}
+                <li class="suggestion-item">{{ s }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- ==================== AI降重入口 ==================== -->
+        <div class="report-section">
+            <div class="rewrite-cta">
+                <div class="rewrite-cta-text">
+                    <h3>✨ 需要降低重复率？</h3>
+                    <p>使用AI智能降重改写工具，一键优化您的论文，有效降低重复率和AI痕迹</p>
+                </div>
+                <a href="{{ url_for('main.tools_page') }}" class="btn btn-primary-lg">
+                    🚀 AI降重改写 →
+                </a>
+            </div>
+        </div>
+
+        <!-- ==================== 免责声明 ==================== -->
+        <div class="disclaimer-inline" style="margin-top: 30px;">
+            ⚠️ <strong>重要提示：</strong>本报告由AI算法生成，结果仅供参考，不代表最终学术判定。学校定稿请以官方查重系统（知网、维普等）出具的报告为准。
+        </div>
+
+        <!-- ==================== 操作按钮 ==================== -->
+        <div class="report-actions-bottom">
+            <a href="{{ url_for('detect.download_report', record_id=record.id) }}" class="btn btn-outline">📥 下载报告</a>
+            <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary">🔄 新建检测</a>
+            <a href="{{ url_for('user.user_center') }}" class="btn btn-outline">📋 检测历史</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

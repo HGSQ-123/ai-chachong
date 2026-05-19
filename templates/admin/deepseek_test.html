@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}API配置状态 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container" style="max-width: 800px;">
+        <div class="section-header">
+            <h2 class="section-title">🔧 API配置状态</h2>
+            <p class="section-desc">查看各API配置情况，填入密钥即可启用真实服务</p>
+        </div>
+
+        <!-- 配置状态卡片 -->
+        <div id="configStatus" class="content-card">
+            <p style="text-align:center; color:var(--text-muted);">加载中...</p>
+        </div>
+
+        <!-- DeepSeek测试 -->
+        <div class="content-card" style="margin-top:20px;">
+            <h3>🧪 DeepSeek 连接测试</h3>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">
+                发送一条测试消息，验证API密钥是否有效
+            </p>
+            <button class="btn btn-primary" onclick="testDeepSeek()" id="btnTestDS">
+                🔌 测试连接
+            </button>
+            <div id="dsTestResult" style="margin-top:16px;"></div>
+        </div>
+
+        <!-- 快速配置指南 -->
+        <div class="content-card" style="margin-top:20px;">
+            <h3>📖 快速配置指南</h3>
+            <h4>1. DeepSeek（AI改写）</h4>
+            <p>注册 → <a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a> → 创建API Key → 复制到 <code>.env</code> 的 <code>DEEPSEEK_API_KEY</code></p>
+            <p style="color:var(--success);">💰 价格：¥1/百万tokens（极低成本）</p>
+
+            <h4>2. GPTZero（AI检测）</h4>
+            <p>注册 → <a href="https://gptzero.me" target="_blank">gptzero.me</a> → 获取API Key → 填入 <code>AI_DETECTION_API_KEY</code></p>
+            <p style="color:var(--success);">💰 免费额度：5000字/月</p>
+
+            <h4>3. 查重API</h4>
+            <p>需企业签约维普/万方，个人用户建议先用内置模拟算法</p>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 加载配置状态
+fetch('{{ url_for("admin.api_config_status") }}')
+    .then(r => r.json())
+    .then(data => {
+        let html = '<table class="records-table"><thead><tr><th>服务</th><th>状态</th><th>价格</th></tr></thead><tbody>';
+        for (const [key, val] of Object.entries(data)) {
+            if (typeof val === 'object' && val.label) {
+                html += `<tr>
+                    <td>${val.label}</td>
+                    <td>${val.configured ? '✅ 已配置' : '⚠️ 未配置（使用模拟算法）'}</td>
+                    <td>${val.price}</td>
+                </tr>`;
+            }
+        }
+        html += '</tbody></table>';
+        document.getElementById('configStatus').innerHTML = html;
+    });
+
+// 测试DeepSeek
+async function testDeepSeek() {
+    const btn = document.getElementById('btnTestDS');
+    const resultDiv = document.getElementById('dsTestResult');
+    btn.disabled = true;
+    btn.textContent = '⏳ 测试中...';
+    resultDiv.innerHTML = '';
+
+    try {
+        const resp = await fetch('{{ url_for("admin.api_deepseek_test") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            resultDiv.innerHTML = `<div class="flash-message flash-success">
+                <span>✅ ${data.message}</span>
+            </div>
+            <div class="content-card" style="margin-top:12px;">
+                <p style="font-size:13px;color:var(--text-muted);">DeepSeek回复：</p>
+                <p>${escapeHtml(data.response || '')}</p>
+            </div>`;
+            showToast('DeepSeek连接成功！', 'success');
+        } else {
+            resultDiv.innerHTML = `<div class="flash-message flash-error">
+                <span>❌ ${data.message}</span>
+            </div>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:8px;">${data.help || ''}</p>`;
+        }
+    } catch (e) {
+        resultDiv.innerHTML = `<div class="flash-message flash-error">网络异常</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔌 测试连接';
+    }
+}
+</script>
+{% endblock %}

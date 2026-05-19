@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}立即检测 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">📋 文档检测</h2>
+            <p class="section-desc">粘贴文本或上传文件，双重检测AI生成率与重复率</p>
+        </div>
+
+        <!-- ==================== 额度提示 ==================== -->
+        {% if quota_info and user %}
+        <div class="quota-info-bar">
+            <div class="quota-item">
+                <span class="quota-label">🎁 免费额度剩余</span>
+                <span class="quota-value">{{ quota_info.free_quota_remaining }} 字</span>
+            </div>
+            {% if quota_info.is_member %}
+            <div class="quota-item">
+                <span class="quota-label">👑 会员额度剩余</span>
+                <span class="quota-value">{{ quota_info.member_quota_remaining }} 字</span>
+            </div>
+            {% endif %}
+            <div class="quota-item">
+                <span class="quota-label">📊 总额度剩余</span>
+                <span class="quota-value">{{ quota_info.total_remaining }} 字</span>
+            </div>
+            {% if not quota_info.is_member %}
+            <a href="{{ url_for('user.member_page') }}" class="btn btn-gold-sm">👑 开通会员</a>
+            {% endif %}
+        </div>
+        {% elif not user %}
+        <div class="quota-info-bar">
+            <p>💡 <a href="{{ url_for('auth.login_page') }}">登录</a>后可享受{{ free_quota_words }}字免费额度，<a href="{{ url_for('auth.register_page') }}">立即注册</a></p>
+        </div>
+        {% endif %}
+
+        <!-- ==================== 提交方式切换 ==================== -->
+        <div class="detect-tabs">
+            <button class="detect-tab active" onclick="switchDetectMode('text')" id="tabText">
+                ✏️ 粘贴文本
+            </button>
+            <button class="detect-tab" onclick="switchDetectMode('file')" id="tabFile">
+                📁 上传文件
+            </button>
+        </div>
+
+        <!-- ==================== 检测模式选择 ==================== -->
+        <div class="detect-mode-selector">
+            <label class="detect-mode-label">检测模式：</label>
+            <select id="detectMode" class="form-select-inline">
+                <option value="both">🔬 双重检测（AI + 查重）</option>
+                <option value="ai_only">🤖 仅AI生成率检测</option>
+                <option value="plagiarism_only">📊 仅重复率查重</option>
+            </select>
+        </div>
+
+        <!-- ==================== 文本粘贴模式 ==================== -->
+        <div class="detect-panel" id="textPanel">
+            <div class="form-group">
+                <textarea
+                    id="textInput"
+                    class="form-textarea"
+                    placeholder="在此粘贴需要检测的文本内容...&#10;&#10;支持中英文混合内容，系统将自动统计字数并执行AI检测+查重双重分析"
+                    rows="12"
+                    maxlength="50000"
+                ></textarea>
+                <div class="textarea-footer">
+                    <span class="word-count" id="wordCount">字数：0</span>
+                    <span class="text-limit">单次最多 {{ config.MAX_DETECTION_WORDS }} 字</span>
+                </div>
+            </div>
+            <div class="detect-actions">
+                <button class="btn btn-primary-lg" onclick="submitTextDetection()" id="btnSubmitText">
+                    🔍 开始检测
+                </button>
+                <button class="btn btn-outline" onclick="clearText()">🗑️ 清空内容</button>
+            </div>
+        </div>
+
+        <!-- ==================== 文件上传模式 ==================== -->
+        <div class="detect-panel" id="filePanel" style="display:none;">
+            <div class="upload-area" id="uploadArea"
+                 onclick="document.getElementById('fileInput').click()"
+                 ondragover="handleDragOver(event)"
+                 ondragleave="handleDragLeave(event)"
+                 ondrop="handleDrop(event)">
+                <div class="upload-icon">📁</div>
+                <h3>点击选择文件或拖拽文件到此处</h3>
+                <p>支持 .docx / .pdf / .txt 格式，最大 {{ config.MAX_UPLOAD_SIZE_MB }}MB</p>
+                <input type="file" id="fileInput" accept=".docx,.pdf,.txt,.doc"
+                       onchange="handleFileSelect(event)" style="display:none;">
+                <div class="upload-file-info" id="fileInfo" style="display:none;">
+                    <span class="file-name" id="fileName"></span>
+                    <span class="file-size" id="fileSize"></span>
+                    <button class="btn btn-text-sm" onclick="clearFile(event)">✕ 移除</button>
+                </div>
+            </div>
+            <div class="detect-actions">
+                <button class="btn btn-primary-lg" onclick="submitFileDetection()" id="btnSubmitFile" disabled>
+                    🔍 上传并检测
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== 加载动画 ==================== -->
+        <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p class="loading-text">正在检测中，请稍候...</p>
+                <p class="loading-subtext">AI分析 + 查重比对进行中</p>
+            </div>
+        </div>
+
+        <!-- ==================== 检测结果展示区 ==================== -->
+        <div class="result-container" id="resultContainer" style="display:none;">
+            <!-- 结果将通过JS动态填充 -->
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 免责提示 ==================== -->
+<div class="container section-padding-sm">
+    <div class="disclaimer-inline">
+        ⚠️ <strong>免责声明：</strong>本平台检测结果仅为AI算法分析参考，不代表最终学术判定。学校定稿请以官方查重系统（如知网、维普等）出具的报告为准。用户上传文稿检测完成后自动删除，我们不会永久保存您的文稿。
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/detect.js') }}"></script>
+{% endblock %}

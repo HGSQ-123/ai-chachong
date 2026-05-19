@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}{{ site_name }} - 专业AI查重与论文重复率检测平台{% endblock %}
+
+{% block content %}
+<!-- ==================== 英雄区域 ==================== -->
+<section class="hero-section">
+    <div class="container hero-content">
+        <div class="hero-text">
+            <h1 class="hero-title">
+                专业<span class="text-gradient">AI查重</span>与<span class="text-gradient">论文检测</span>
+            </h1>
+            <p class="hero-subtitle">
+                双重检测 · AI生成率识别 + 全网重复率查重<br>
+                支持粘贴文本和上传Word/PDF，秒出详细报告
+            </p>
+            <div class="hero-actions">
+                <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary-lg">
+                    🚀 立即免费检测
+                </a>
+                <a href="{{ url_for('main.tools_page') }}" class="btn btn-outline-lg">
+                    ✨ AI降重改写
+                </a>
+            </div>
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <span class="stat-number">{{ free_quota_words }}</span>
+                    <span class="stat-label">新用户免费字数</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">双重</span>
+                    <span class="stat-label">AI+查重检测</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">秒级</span>
+                    <span class="stat-label">快速出报告</span>
+                </div>
+            </div>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-card">
+                <div class="hero-card-header">📋 检测报告预览</div>
+                <div class="hero-card-body">
+                    <div class="mini-score">
+                        <div class="mini-score-circle" style="--score: 85;">85<span>分</span></div>
+                        <span>原创得分</span>
+                    </div>
+                    <div class="mini-metrics">
+                        <div class="mini-metric">
+                            <span>AI生成率</span><span class="text-green">12%</span>
+                        </div>
+                        <div class="mini-metric">
+                            <span>重复率</span><span class="text-orange">18%</span>
+                        </div>
+                        <div class="mini-metric">
+                            <span>人工原创</span><span class="text-blue">88%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 广告位 ==================== -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="ad-slot">{{ config.AD_SLOT_1_HTML|safe }}</div>
+    </div>
+</section>
+
+<!-- ==================== 功能特点 ==================== -->
+<section class="section-padding">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">为什么选择我们</h2>
+            <p class="section-desc">四大核心优势，全方位保障论文质量</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>AI生成率检测</h3>
+                <p>智能识别文本是否由ChatGPT、文心一言等AI工具生成，精准标注AI撰写占比，帮助规避学术不端风险。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>全网重复率查重</h3>
+                <p>对接第三方公开查重API，比对全网学术资源与网络内容，快速定位重复片段并标注来源出处。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📄</div>
+                <h3>多格式文档支持</h3>
+                <p>支持粘贴文本直接检测，也支持上传Word(.docx)和PDF(.pdf)文件，自动解析文档内容进行检测。</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">✨</div>
+                <h3>AI智能降重改写</h3>
+                <p>提供一键降重、语句润色、语病修正、句式优化等AI辅助工具，帮助快速降低重复率。</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 检测流程 ==================== -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">三步完成检测</h2>
+            <p class="section-desc">简单快捷，秒出详细报告</p>
+        </div>
+        <div class="steps-container">
+            <div class="step-item">
+                <div class="step-number">1</div>
+                <h3>提交文稿</h3>
+                <p>粘贴文本或上传Word/PDF文件，系统自动解析内容</p>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step-item">
+                <div class="step-number">2</div>
+                <h3>双重检测</h3>
+                <p>同时进行AI生成率识别与全网重复率查重比对</p>
+            </div>
+            <div class="step-arrow">→</div>
+            <div class="step-item">
+                <div class="step-number">3</div>
+                <h3>查看报告</h3>
+                <p>获取详细报告：原创得分、重复片段标红、优化建议</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 价格方案 ==================== -->
+<section class="section-padding">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">灵活的价格方案</h2>
+            <p class="section-desc">免费额度引流 + 阶梯付费 + 会员月卡，满足不同需求</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <div class="pricing-badge">🎁 限时赠送</div>
+                <h3>免费体验</h3>
+                <div class="pricing-price">
+                    <span class="price">¥0</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>✅ {{ free_quota_words }}字免费额度</li>
+                    <li>✅ AI生成率检测</li>
+                    <li>✅ 全网重复率查重</li>
+                    <li>✅ 详细检测报告</li>
+                    <li>✅ 支持文件上传</li>
+                </ul>
+                <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline btn-block">免费注册</a>
+            </div>
+            <div class="pricing-card">
+                <h3>按次付费</h3>
+                <div class="pricing-price">
+                    <span class="price">¥1.5</span>
+                    <span class="price-unit">/千字起</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>✅ 阶梯价格更优惠</li>
+                    <li>✅ 低至0.9元/千字</li>
+                    <li>✅ 按需购买不浪费</li>
+                    <li>✅ 所有检测功能</li>
+                    <li>✅ 永久有效</li>
+                </ul>
+                <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary btn-block">开始检测</a>
+            </div>
+            <div class="pricing-card pricing-recommended">
+                <div class="pricing-badge pricing-badge-hot">🔥 推荐</div>
+                <h3>会员月卡</h3>
+                <div class="pricing-price">
+                    <span class="price">¥{{ member_monthly_price }}</span>
+                    <span class="price-unit">/月</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>✅ 每月{{ member_monthly_quota }}字额度</li>
+                    <li>✅ AI检测+查重不限次</li>
+                    <li>✅ AI降重改写免费</li>
+                    <li>✅ 语句润色优化免费</li>
+                    <li>✅ 优先客服支持</li>
+                </ul>
+                <a href="{{ url_for('user.member_page') }}" class="btn btn-gold btn-block">立即开通</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 广告位2 ==================== -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="ad-slot">{{ config.AD_SLOT_2_HTML|safe }}</div>
+    </div>
+</section>
+
+<!-- ==================== 常见问题 ==================== -->
+<section class="section-padding">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">常见问题</h2>
+        </div>
+        <div class="faq-list">
+            <details class="faq-item">
+                <summary>检测结果准确吗？</summary>
+                <p>我们的AI检测和查重算法基于多维度文本特征分析，具有较高的参考价值。但请注意，检测结果仅供参考，最终请以学校官方查重系统（如知网、维普等）的定稿结果为准。</p>
+            </details>
+            <details class="faq-item">
+                <summary>上传的文稿安全吗？</summary>
+                <p>我们非常重视用户隐私。所有上传的文稿仅在检测期间临时存储，检测完成后系统会自动清理删除。我们绝不永久保存用户的文稿内容，也不会将文稿用于任何其他用途。</p>
+            </details>
+            <details class="faq-item">
+                <summary>免费额度用完了怎么办？</summary>
+                <p>免费额度用完后，您可以选择按次付费检测（阶梯价格，字数越多越便宜），或者开通会员月卡（每月{{ member_monthly_quota }}字，仅需¥{{ member_monthly_price }}/月），享受超高性价比。</p>
+            </details>
+            <details class="faq-item">
+                <summary>支持哪些文件格式？</summary>
+                <p>目前支持Word文档(.docx)和PDF文档(.pdf)的上传解析。您也可以直接在文本框中粘贴需要检测的内容。我们持续优化更多格式的支持。</p>
+            </details>
+            <details class="faq-item">
+                <summary>AI降重改写效果如何？</summary>
+                <p>我们的AI降重改写工具采用先进的自然语言处理技术，能够在不改变原意的前提下进行同义替换、句式重组和表达优化。建议改写后再次检测确认效果。</p>
+            </details>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== CTA区域 ==================== -->
+<section class="cta-section">
+    <div class="container cta-content">
+        <h2>准备好检测您的论文了吗？</h2>
+        <p>新用户注册即送{{ free_quota_words }}字免费额度，立即体验双重检测服务！</p>
+        <div class="cta-actions">
+            <a href="{{ url_for('detect.detect_page') }}" class="btn btn-white-lg">🚀 开始免费检测</a>
+            <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline-white-lg">📝 免费注册</a>
+        </div>
+    </div>
+</section>
+{% endblock %}

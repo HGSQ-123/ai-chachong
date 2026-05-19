@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}AI辅助工具 - {{ site_name }}{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">✨ AI辅助工具</h2>
+            <p class="section-desc">智能降重、语句润色、语病修正、句式优化 — 全方位提升论文质量</p>
+        </div>
+
+        <!-- ==================== 工具选择标签 ==================== -->
+        <div class="tools-tabs">
+            <button class="tool-tab active" onclick="switchTool('rewrite')" id="tabRewrite">
+                🔄 AI降重改写
+            </button>
+            <button class="tool-tab" onclick="switchTool('polish')" id="tabPolish">
+                ✨ 语句润色
+            </button>
+            <button class="tool-tab" onclick="switchTool('fix')" id="tabFix">
+                🩺 语病修正
+            </button>
+            <button class="tool-tab" onclick="switchTool('optimize')" id="tabOptimize">
+                📐 句式优化
+            </button>
+        </div>
+
+        <!-- ==================== 工具描述 ==================== -->
+        <div class="tool-description" id="toolDescription">
+            <h3>🔄 AI降重改写</h3>
+            <p>智能识别重复内容，在不改变原意的前提下进行同义替换、句式重组和表达优化，有效降低论文重复率。</p>
+        </div>
+
+        <!-- ==================== 输入输出区 ==================== -->
+        <div class="tool-workspace">
+            <div class="tool-input-area">
+                <label>📝 输入原文</label>
+                <textarea id="toolInput" class="form-textarea"
+                    placeholder="在此粘贴需要处理的文本...&#10;&#10;支持中英文内容，AI将自动识别并优化"
+                    rows="10" maxlength="5000"></textarea>
+                <div class="textarea-footer">
+                    <span class="word-count" id="toolWordCount">字数：0</span>
+                    <span class="text-limit">单次最多5000字</span>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="executeTool()" id="btnExecute">
+                    🔄 开始处理
+                </button>
+            </div>
+            <div class="tool-output-area">
+                <label>✅ 处理结果</label>
+                <div class="tool-output-box" id="toolOutput">
+                    <div class="empty-state">
+                        <div class="empty-icon">✨</div>
+                        <p>处理结果将显示在这里</p>
+                    </div>
+                </div>
+                <div class="tool-suggestions" id="toolSuggestions" style="display:none;"></div>
+                <button class="btn btn-outline btn-block" onclick="copyResult()" id="btnCopy" style="display:none;">
+                    📋 复制结果
+                </button>
+            </div>
+        </div>
+
+        <!-- ==================== 免责声明 ==================== -->
+        <div class="disclaimer-inline" style="margin-top: 30px;">
+            ⚠️ AI处理结果仅供参考，建议人工复核后使用。改写后的内容仍需进行查重检测确认效果。
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentTool = 'rewrite';
+
+const toolInfo = {
+    rewrite: { title: '🔄 AI降重改写', desc: '智能识别重复内容，在不改变原意的前提下进行同义替换、句式重组和表达优化，有效降低论文重复率。' },
+    polish: { title: '✨ 语句润色', desc: '优化词语搭配和语句流畅度，提升文本的专业性和可读性，让表达更加自然优美。' },
+    fix: { title: '🩺 语病修正', desc: '自动检查并修正常见语病，包括语法错误、搭配不当、逻辑混乱等问题。' },
+    optimize: { title: '📐 句式优化', desc: '优化句式结构，拆分过长句子，提升句式多样性，增强表达效果。' },
+};
+
+function switchTool(tool) {
+    currentTool = tool;
+    document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('tab' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active');
+    document.getElementById('toolDescription').innerHTML = `<h3>${toolInfo[tool].title}</h3><p>${toolInfo[tool].desc}</p>`;
+    document.getElementById('toolOutput').innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>处理结果将显示在这里</p></div>';
+    document.getElementById('toolSuggestions').style.display = 'none';
+    document.getElementById('btnCopy').style.display = 'none';
+}
+
+document.getElementById('toolInput').addEventListener('input', function() {
+    const text = this.value;
+    let count = 0;
+    count += (text.match(/[\u4e00-\u9fff]/g) || []).length;
+    count += (text.match(/[a-zA-Z]+/g) || []).length;
+    document.getElementById('toolWordCount').textContent = '字数：' + count;
+});
+
+async function executeTool() {
+    const text = document.getElementById('toolInput').value.trim();
+    if (!text) {
+        showToast('请先输入要处理的文本', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btnExecute');
+    btn.disabled = true;
+    btn.textContent = '⏳ 处理中...';
+
+    try {
+        const resp = await fetch('{{ url_for("user.api_ai_rewrite") }}', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ text: text, action: currentTool }),
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            document.getElementById('toolOutput').innerHTML = `<div class="result-text">${escapeHtml(data.result_text)}</div>`;
+            if (data.suggestions && data.suggestions.length > 0) {
+                const sugHtml = '<h4>💡 处理建议</h4><ul>' + data.suggestions.map(s => `<li>${s}</li>`).join('') + '</ul>';
+                document.getElementById('toolSuggestions').innerHTML = sugHtml;
+                document.getElementById('toolSuggestions').style.display = 'block';
+            }
+            document.getElementById('btnCopy').style.display = 'block';
+            showToast('处理完成！', 'success');
+        } else {
+            showToast(data.message, 'error');
+        }
+    } catch (e) {
+        showToast('网络异常，请稍后重试', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 开始处理';
+    }
+}
+
+function copyResult() {
+    const outputEl = document.getElementById('toolOutput');
+    const text = outputEl.textContent.trim();
+    if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+            showToast('已复制到剪贴板', 'success');
+        }).catch(() => {
+            showToast('复制失败，请手动选择复制', 'error');
+        });
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ site_description }}">
+    <meta name="keywords" content="AI查重,论文查重,AI检测,重复率检测,论文降重,AI改写">
+    <title>{% block title %}{{ site_name }} - 专业AI查重与论文检测{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- ==================== 顶部公告栏 ==================== -->
+    {% if announcement %}
+    <div class="announcement-bar" id="announcementBar">
+        <div class="container">
+            <span class="announcement-text">{{ announcement|safe }}</span>
+            <button class="announcement-close" onclick="document.getElementById('announcementBar').style.display='none'">✕</button>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ==================== 主导航栏 ==================== -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="{{ url_for('main.index') }}" class="nav-logo">
+                <span class="logo-icon">🔍</span>
+                <span class="logo-text">{{ site_name }}</span>
+            </a>
+            <ul class="nav-links" id="navLinks">
+                <li><a href="{{ url_for('main.index') }}" class="nav-link">首页</a></li>
+                <li><a href="{{ url_for('detect.detect_page') }}" class="nav-link">立即检测</a></li>
+                <li><a href="{{ url_for('main.tools_page') }}" class="nav-link">AI工具</a></li>
+                <li><a href="{{ url_for('user.member_page') }}" class="nav-link">会员充值</a></li>
+                <li><a href="{{ url_for('main.about') }}" class="nav-link">关于我们</a></li>
+            </ul>
+            <div class="nav-actions">
+                {% if current_user_data %}
+                <div class="user-menu">
+                    <a href="{{ url_for('user.user_center') }}" class="btn btn-outline-sm">
+                        👤 {{ current_user_data.username }}
+                    </a>
+                    <a href="{{ url_for('auth.logout') }}" class="btn btn-text-sm">退出</a>
+                </div>
+                {% else %}
+                <a href="{{ url_for('auth.login_page') }}" class="btn btn-outline-sm">登录</a>
+                <a href="{{ url_for('auth.register_page') }}" class="btn btn-primary-sm">免费注册</a>
+                {% endif %}
+            </div>
+            <!-- 移动端菜单按钮 -->
+            <button class="mobile-menu-btn" onclick="document.getElementById('navLinks').classList.toggle('show')">☰</button>
+        </div>
+    </nav>
+
+    <!-- ==================== Flash消息提示 ==================== -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container container">
+        {% for category, message in messages %}
+        <div class="flash-message flash-{{ category }}">
+            <span>{{ message }}</span>
+            <button class="flash-close" onclick="this.parentElement.remove()">✕</button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <!-- ==================== 主内容区 ==================== -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ==================== 页脚 ==================== -->
+    <footer class="footer">
+        <div class="container footer-container">
+            <div class="footer-col">
+                <h4>{{ site_name }}</h4>
+                <p>专业AI生成率检测与论文重复率查重平台。提供AI检测、全网查重、智能降重一站式服务。</p>
+                <p class="footer-disclaimer">⚠️ 检测结果仅供参考，学校定稿以官方系统为准</p>
+            </div>
+            <div class="footer-col">
+                <h4>快速链接</h4>
+                <ul>
+                    <li><a href="{{ url_for('detect.detect_page') }}">立即检测</a></li>
+                    <li><a href="{{ url_for('main.tools_page') }}">AI辅助工具</a></li>
+                    <li><a href="{{ url_for('user.member_page') }}">会员充值</a></li>
+                    <li><a href="{{ url_for('main.about') }}">关于我们</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>法律声明</h4>
+                <ul>
+                    <li><a href="{{ url_for('main.disclaimer') }}">免责声明</a></li>
+                    <li><a href="#">隐私政策</a></li>
+                    <li><a href="#">服务条款</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>联系我们</h4>
+                <p>📧 {{ contact_email }}</p>
+                <p>💬 在线客服：工作日 9:00-18:00</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="container">
+                <p>&copy; 2026 {{ site_name }} 版权所有 | 检测结果仅供参考，学校定稿以官方系统为准</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== Toast通知容器 ==================== -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ==================== 全局脚本 ==================== -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

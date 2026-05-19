@@ -123,6 +123,7 @@ class FileParser:
         """
         解析PDF文档
         使用PyPDF2库提取文本
+        注意：扫描版图片PDF无法提取文字，需用OCR工具
         """
         try:
             from PyPDF2 import PdfReader
@@ -135,18 +136,37 @@ class FileParser:
 
         try:
             reader = PdfReader(filepath)
+            total_pages = len(reader.pages)
             pages_text = []
-            for page in reader.pages:
-                text = page.extract_text()
-                if text:
-                    pages_text.append(text.strip())
+
+            for i, page in enumerate(reader.pages):
+                try:
+                    text = page.extract_text()
+                    if text and text.strip():
+                        pages_text.append(text.strip())
+                except Exception:
+                    # 单页解析失败，跳过
+                    continue
 
             full_text = "\n".join(pages_text)
 
+            # 检查是否为加密PDF
+            if reader.is_encrypted:
+                return {
+                    "success": False, "text": "", "word_count": 0,
+                    "error": "PDF文件已加密，请先解密后再上传",
+                    "file_type": "pdf",
+                }
+
+            # 没有任何文字内容
             if not full_text.strip():
                 return {
                     "success": False, "text": "", "word_count": 0,
-                    "error": "PDF内容为空或为扫描版图片PDF（无法提取文字），请上传可选中文字的PDF",
+                    "error": f"无法提取文字（共{total_pages}页）\n"
+                             "可能原因：\n"
+                             "1. PDF是扫描版图片（需用WPS/Adobe导出为文字版PDF）\n"
+                             "2. PDF文字被加密保护\n"
+                             "3. 建议：用WPS打开 → 另存为 → 选择「标准PDF」",
                     "file_type": "pdf",
                 }
 

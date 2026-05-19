@@ -198,11 +198,14 @@ def api_detect_file():
 
         if not parse_result["success"]:
             # 清理临时文件
-            try:
-                os.remove(filepath)
-            except OSError:
-                pass
-            return jsonify({"success": False, "message": parse_result["error"]}), 400
+            try: os.remove(filepath)
+            except OSError: pass
+            return jsonify({
+                "success": False,
+                "message": parse_result["error"],
+                "file_type": parse_result.get("file_type", "unknown"),
+                "help": "扫描版PDF需先用WPS/Word转为文字版"
+            }), 400
 
         text = parse_result["text"]
         word_count = parse_result["word_count"]

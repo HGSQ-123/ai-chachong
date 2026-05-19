@@ -274,7 +274,12 @@ async function submitFileDetection() {
         } else if (result.need_pay) {
             showPayPrompt(result);
         } else {
-            showToast(result.message || '文件检测失败', 'error');
+            // 显示详细错误
+            let errMsg = result.message || '文件检测失败';
+            if (result.file_type === 'pdf') {
+                errMsg += '\n\n💡 如果是扫描版PDF，请用WPS打开后「另存为」标准PDF再上传';
+            }
+            showToast(errMsg, 'error');
         }
     } catch (error) {
         if (error.name === 'AbortError') {

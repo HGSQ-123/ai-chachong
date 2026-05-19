@@ -122,14 +122,19 @@ app = create_app()
 
 # ==================== 直接运行入口 ====================
 if __name__ == "__main__":
+    # 生产环境：从环境变量读取端口，关闭debug
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_DEBUG", "0").lower() in ("1", "true", "yes")
+
     print("=" * 60)
     print(f"  {config.SITE_NAME} - 启动中...")
-    print(f"  访问地址: http://localhost:5000")
+    print(f"  访问地址: http://localhost:{port}")
     print(f"  免费额度: {config.FREE_QUOTA_WORDS}字/新用户")
     print(f"  会员价格: {config.MEMBER_MONTHLY_PRICE}元/月")
     print("=" * 60)
     app.run(
         host="0.0.0.0",
-        port=5000,
-        debug=True,  # 生产环境请设置为False
+        port=port,
+        debug=debug,
     )

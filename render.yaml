@@ -9,9 +9,11 @@ services:
     startCommand: python app.py
     # 免费层配置
     plan: free
-    # 环境变量（生产环境请修改SECRET_KEY）
+    # 环境变量
     envVars:
       - key: SECRET_KEY
-        value: change-this-to-random-string
+        sync: false
       - key: PYTHON_VERSION
         value: 3.11
+      - key: PORT
+        value: 10000

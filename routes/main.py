@@ -70,7 +70,13 @@ def tools_page():
 @main_bp.route("/pricing")
 def pricing_page():
     """定价页面"""
-    return render_template("pricing.html", config=config)
+    user = None
+    quota_info = None
+    if "user_id" in session:
+        user = db.get_user_by_id(session["user_id"])
+        if user:
+            quota_info = BillingService.get_available_quota(user)
+    return render_template("pricing.html", user=user, quota_info=quota_info, config=config)
 
 
 @main_bp.errorhandler(404)

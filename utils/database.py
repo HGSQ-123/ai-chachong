@@ -1,12 +1,92 @@
 """
 数据库管理器 - 使用SQLite实现数据持久化
 封装所有数据库操作，支持用户、检测记录、计费记录的CRUD
+支持 Turso 云数据库（设置环境变量自动切换）
 """
 
 import sqlite3
 import os
+import json
 from datetime import datetime
 from contextlib import contextmanager
+
+# Turso 配置
+TURSO_URL = os.getenv("TURSO_DB_URL", "")
+TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
+
+
+class TursoConn:
+    """轻量 Turso HTTP 连接，模拟 sqlite3 接口"""
+    def __init__(self, url, token):
+        self._url = url.replace("libsql://", "https://")
+        self._token = token
+        self.row_factory = None
+        self._rows = []
+        self._idx = 0
+        self.rowcount = 0
+        self.lastrowid = 0
+    def cursor(self):
+        return self
+    def execute(self, sql, params=None):
+        import requests as _r
+        resp = _r.post(f"{self._url}/v2/pipeline",
+            headers={"Authorization": f"Bearer {self._token}", "Content-Type": "application/json"},
+            json={"requests": [{"type": "execute", "stmt": {"sql": sql, "args": params or []}}, {"type": "close"}]},
+            timeout=30)
+        resp.raise_for_status()
+        data = resp.json()
+        res = data.get("results", [{}])[0].get("response", {}).get("result", {})
+        cols = res.get("cols", [])
+        raw_rows = res.get("rows", [])
+        self._rows = []
+        for row in raw_rows:
+            d = {}
+            for i, col in enumerate(cols):
+                cell = row[i]
+                v = cell.get("value") if isinstance(cell, dict) else cell
+                # 类型转换
+                if col.get("type") == "integer" and v is not None:
+                    v = int(v)
+                elif col.get("type") == "real" and v is not None:
+                    v = float(v)
+                d[col["name"]] = v
+            # 同时支持 .key 访问
+            class Row:
+                def __init__(self, d): self.__dict__.update(d); self._d = d
+                def __getitem__(self, k): return self._d[k]
+                def __contains__(self, k): return k in self._d
+                def get(self, k, d=None): return self._d.get(k, d)
+                def keys(self): return self._d.keys()
+            self._rows.append(Row(d))
+        self._idx = 0
+        self.rowcount = len(self._rows)
+        self.lastrowid = int(res.get("last_insert_rowid") or 0)
+        return self
+    def executemany(self, sql, seq):
+        for p in seq:
+            self.execute(sql, p)
+    def fetchone(self):
+        if self._idx < len(self._rows):
+            r = self._rows[self._idx]
+            self._idx += 1
+            return r
+        return None
+    def fetchall(self):
+        return self._rows
+    def commit(self):
+        pass
+    def rollback(self):
+        pass
+    def close(self):
+        pass
+    def __iter__(self):
+        self._idx = 0
+        return self
+    def __next__(self):
+        r = self.fetchone()
+        if r is None:
+            raise StopIteration
+        return r
 
 
 class DatabaseManager:
@@ -26,26 +106,40 @@ class DatabaseManager:
     def __init__(self, db_path=None):
         if self._initialized:
             return
-        # 默认数据库路径
-        if db_path is None:
-            # Render Disk 持久化路径优先
-            if os.path.isdir("/data"):
-                db_dir = "/data"
-            else:
-                db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
-            os.makedirs(db_dir, exist_ok=True)
-            db_path = os.path.join(db_dir, "detection.db")
-        self.db_path = db_path
+        self._turso = bool(TURSO_URL and TURSO_TOKEN)
+        if self._turso:
+            self.db_path = TURSO_URL
+            print(f"[DB] Turso Cloud: {TURSO_URL}")
+        else:
+            if db_path is None:
+                if os.path.isdir("/data"):
+                    db_dir = "/data"
+                else:
+                    db_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+                os.makedirs(db_dir, exist_ok=True)
+                db_path = os.path.join(db_dir, "detection.db")
+            self.db_path = db_path
         self._init_tables()
         self._initialized = True
 
     @contextmanager
     def get_connection(self):
-        """获取数据库连接（上下文管理器，自动提交和关闭）"""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # 使查询结果支持字典式访问
-        conn.execute("PRAGMA journal_mode=WAL")  # 提升并发性能
-        conn.execute("PRAGMA foreign_keys=ON")    # 启用外键约束
+        """获取数据库连接"""
+        if self._turso:
+            try:
+                conn = TursoConn(TURSO_URL, TURSO_TOKEN)
+                yield conn
+                return
+            except Exception as e:
+                print(f"[DB] Turso failed: {e}")
+        # SQLite fallback
+        db_path = self.db_path if not self._turso else os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "detection.db")
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA foreign_keys=ON")
         try:
             yield conn
             conn.commit()

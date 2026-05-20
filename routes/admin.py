@@ -109,6 +109,10 @@ def api_analytics():
         "total_recharge": round(total_recharge, 2), "total_recharge_count": total_recharge_count, "today_recharge": round(today_recharge, 2),
         "daily": daily_stats,
     })
+
+
+@admin_bp.route("/api/config-status")
+def api_config_status():
     """查看所有API配置状态"""
     from services.api_client import DeepSeekClient, AIDetectionAPIClient, PlagiarismAPIClient
     from services.payment import PaymentService

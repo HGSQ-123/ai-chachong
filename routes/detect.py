@@ -32,7 +32,7 @@ def detect_page():
         user = db.get_user_by_id(session["user_id"])
         if user:
             quota_info = BillingService.get_available_quota(user)
-    return render_template("detect.html", user=user, quota_info=quota_info)
+    return render_template("detect.html", user=user, quota_info=quota_info, config=config)
 
 
 @detect_bp.route("/api/text", methods=["POST"])

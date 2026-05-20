@@ -552,16 +552,13 @@ class DatabaseManager:
             return True
 
     def deduct_credits(self, user_id: int, words: int) -> bool:
-        """扣除字数额度（检测消耗）"""
+        """扣除字数额度（检测消耗）- 原子操作"""
         with self.get_connection() as conn:
-            user = conn.execute("SELECT credits FROM users WHERE id = ?", (user_id,)).fetchone()
-            if not user or user["credits"] < words:
-                return False
-            conn.execute(
-                "UPDATE users SET credits = credits - ? WHERE id = ?",
-                (words, user_id)
+            cursor = conn.execute(
+                "UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?",
+                (words, user_id, words)
             )
-            return True
+            return cursor.rowcount > 0
 
     def get_user_credits(self, user_id: int) -> dict:
         """获取用户额度信息"""

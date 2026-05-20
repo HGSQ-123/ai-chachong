@@ -253,7 +253,10 @@ def api_pay_mock_confirm():
 
 
 # 内存订单追踪 { order_id: {"paid": bool, "user_id": int, "amount": float} }
-_paid_orders = {}\n\n\n@user_bp.route("/api/check-pay")
+_paid_orders = {}
+
+
+@user_bp.route("/api/check-pay")
 def api_check_pay():
     """
     查询支付订单是否已完成

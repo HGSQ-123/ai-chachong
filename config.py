@@ -107,6 +107,7 @@ class Config:
     SMTP_USER = os.getenv("SMTP_USER", "")
     SMTP_PASS = os.getenv("SMTP_PASS", "")  # QQ邮箱需用授权码，非密码
     BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")  # Brevo HTTP API（Render无SMTP端口时使用）
+    RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")  # Resend HTTP API（更简单，100封/天免费）
     SITE_NAME = os.getenv("SITE_NAME", "AI查重检测平台")
     SITE_DESCRIPTION = os.getenv("SITE_DESCRIPTION", "专业AI生成率检测与论文重复率查重平台")
     SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://localhost:5000")

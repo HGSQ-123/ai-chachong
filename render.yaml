@@ -31,6 +31,8 @@ services:
         sync: false
       - key: BREVO_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
     # 持久化磁盘（1GB免费）
     disk:
       name: data

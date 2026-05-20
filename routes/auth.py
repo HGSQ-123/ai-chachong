@@ -163,7 +163,7 @@ def api_send_code():
 
 
 def _send_email(to_email: str, code: str):
-    """发送验证码邮件（优先HTTP API，回退SMTP）"""
+    """发送验证码邮件（Resend → Brevo → SMTP 自动降级）"""
     import smtplib
     from email.mime.text import MIMEText
     from email.header import Header
@@ -171,7 +171,32 @@ def _send_email(to_email: str, code: str):
     subject = f"[{config.SITE_NAME}] 验证码 {code}"
     body = f"您的验证码是：{code}\n\n有效期10分钟，请勿泄露给他人。\n\n—— {config.SITE_NAME}"
 
-    # 方式1: Brevo HTTP API（Render友好，不依赖SMTP端口）
+    # 方式1: Resend HTTP API（最简单，100封/天免费）
+    resend_key = config.RESEND_API_KEY
+    if resend_key:
+        try:
+            import requests as _req
+            r = _req.post(
+                "https://api.resend.com/emails",
+                headers={
+                    "Authorization": f"Bearer {resend_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "from": f"{config.SITE_NAME} <noreply@aichachong.com>",
+                    "to": [to_email],
+                    "subject": subject,
+                    "text": body,
+                },
+                timeout=10,
+            )
+            if r.status_code in (200, 201):
+                return  # 成功
+            print(f"[EMAIL] Resend API failed: {r.status_code} {r.text[:200]}")
+        except Exception as e:
+            print(f"[EMAIL] Resend API error: {e}")
+
+    # 方式2: Brevo HTTP API（300封/天免费）
     brevo_key = config.BREVO_API_KEY
     if brevo_key:
         try:
@@ -196,7 +221,7 @@ def _send_email(to_email: str, code: str):
         except Exception as e:
             print(f"[EMAIL] Brevo API error: {e}")
 
-    # 方式2: SMTP（本地/非Render环境可用）
+    # 方式3: SMTP（本地可用，Render封端口）
     try:
         msg = MIMEText(body, "plain", "utf-8")
         msg["Subject"] = Header(subject, "utf-8")

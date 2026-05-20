@@ -183,7 +183,7 @@ def _send_email(to_email: str, code: str):
                     "Content-Type": "application/json",
                 },
                 json={
-                    "from": f"{config.SITE_NAME} <noreply@aichachong.com>",
+                    "from": f"{config.SITE_NAME} <onboarding@resend.dev>",
                     "to": [to_email],
                     "subject": subject,
                     "text": body,

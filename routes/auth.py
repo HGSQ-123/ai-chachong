@@ -6,6 +6,7 @@
 import random
 import time
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from config import config
 from utils.database import db
 from models.user import User
 from utils.decorators import guest_only, login_required

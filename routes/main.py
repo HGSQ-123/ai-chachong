@@ -67,6 +67,12 @@ def tools_page():
     return render_template("tools.html", user=user, config=config)
 
 
+@main_bp.route("/pricing")
+def pricing_page():
+    """定价页面"""
+    return render_template("pricing.html", config=config)
+
+
 @main_bp.errorhandler(404)
 def page_not_found(e):
     """404页面"""

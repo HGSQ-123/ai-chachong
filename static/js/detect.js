@@ -346,6 +346,7 @@ function showPayPrompt(data) {
     if (!container) return;
 
     container.style.display = 'block';
+    const qi = data.quota_info || {};
     container.innerHTML = `
         <div class="pay-prompt" style="text-align:center; padding:40px; background:white; border:1px solid var(--border); border-radius:16px;">
             <div style="font-size:48px; margin-bottom:16px;">💰</div>
@@ -356,15 +357,15 @@ function showPayPrompt(data) {
             <p style="color:var(--text-secondary); margin-bottom:24px;">
                 需要付费 <strong style="font-size:24px; color:var(--primary);">¥${data.extra_cost}</strong>
             </p>
-            ${data.quota_info ? `
             <div style="margin-bottom:20px; padding:12px; background:var(--bg-secondary); border-radius:8px; display:inline-block; text-align:left;">
                 <p style="font-size:13px; color:var(--text-muted); margin:0;">
-                    🎁 免费额度剩余：${data.quota_info.free_quota_remaining}字
-                    ${data.quota_info.is_member ? ' | 👑 会员额度剩余：' + data.quota_info.member_quota_remaining + '字' : ''}
+                    🎁 免费额度剩余：${qi.free_remaining || 0}字 | 💳 充值余额：${qi.credits || 0}字
+                    ${qi.is_member ? ' | 👑 会员额度：' + (qi.member_remaining || 0) + '字' : ''}
                 </p>
-            </div>` : ''}
+            </div>
             <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-                <a href="/user/member" class="btn btn-gold">👑 开通会员（¥${data.extra_cost > 10 ? '29.9/月' : '更划算'}）</a>
+                <a href="/pricing" class="btn btn-primary" style="font-size:15px;padding:10px 24px;">💳 去充值（0.49元/千字）</a>
+                <a href="/user/member" class="btn btn-gold" style="font-size:15px;padding:10px 24px;">👑 开通会员</a>
                 <button class="btn btn-outline" onclick="this.closest('.pay-prompt').parentElement.style.display='none'">暂不处理</button>
             </div>
         </div>

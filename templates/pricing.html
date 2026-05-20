@@ -222,13 +222,18 @@ function showPayModal(order) {
 }
 
 async function completePay(orderId, payUrl) {
+    // 查询支付状态
     try {
-        const cr = await fetch(payUrl + (payUrl.includes('?') ? '&' : '?') + 'order_type=recharge');
-        const cd = await cr.json();
-        showToast(cd.message, cd.success ? 'success' : 'error');
-        if (cd.success) setTimeout(() => location.reload(), 1500);
+        const resp = await fetch('/user/api/check-pay?order_id=' + orderId);
+        const data = await resp.json();
+        if (data.success) {
+            showToast('支付成功！', 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('暂未收到支付通知，请确认已扫码付款后重试', 'warning');
+        }
     } catch(e) {
-        showToast('请稍后重试', 'error');
+        showToast('查询失败，请重试', 'error');
     }
 }
 
@@ -251,6 +256,19 @@ async function checkPayStatus(orderId) {
         showToast('查询失败，请重试', 'error');
         btn.disabled = false;
         btn.textContent = '✅ 已完成支付';
+    }
+}
+
+// 兼容旧的 completePay 调用（带 payUrl 参数）
+async function completePayLegacy(orderId, payUrl) {
+    // 模拟支付确认
+    try {
+        const cr = await fetch(payUrl + (payUrl.includes('?') ? '&' : '?') + 'order_type=recharge');
+        const cd = await cr.json();
+        showToast(cd.message, cd.success ? 'success' : 'error');
+        if (cd.success) setTimeout(() => location.reload(), 1500);
+    } catch(e) {
+        showToast('请稍后重试', 'error');
     }
 }
 </script>

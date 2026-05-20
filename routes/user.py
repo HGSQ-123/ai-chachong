@@ -150,6 +150,9 @@ def api_purchase_member():
     if not order["success"]:
         return jsonify({"success": False, "message": "创建订单失败，请重试"}), 500
 
+    # 注册订单追踪
+    _paid_orders[order["order_id"]] = {"paid": False, "user_id": user_id, "amount": amount}
+
     return jsonify({
         "success": True,
         "message": "订单已创建",
@@ -194,6 +197,9 @@ def api_purchase_credits():
     if not order["success"]:
         return jsonify({"success": False, "message": "创建订单失败"}), 500
 
+    # 注册订单追踪（初始未支付）
+    _paid_orders[order["order_id"]] = {"paid": False, "user_id": user_id, "amount": pkg["amount"]}
+
     return jsonify({
         "success": True,
         "message": "订单已创建",
@@ -234,6 +240,9 @@ def api_pay_mock_confirm():
         result = BillingService.purchase_member(user_id)
 
     if result["success"]:
+        # 标记订单已支付
+        if order_id:
+            _paid_orders[order_id] = {"paid": True, "user_id": user_id, "amount": amount}
         return jsonify({
             "success": True,
             "message": result.get("message", "支付成功！"),
@@ -241,6 +250,24 @@ def api_pay_mock_confirm():
         })
     else:
         return jsonify({"success": False, "message": result.get("message", "开通失败")}), 500
+
+
+# 内存订单追踪 { order_id: {"paid": bool, "user_id": int, "amount": float} }
+_paid_orders = {}\n\n\n@user_bp.route("/api/check-pay")
+def api_check_pay():
+    """
+    查询支付订单是否已完成
+    GET ?order_id=xxx
+    """
+    order_id = request.args.get("order_id", "")
+    if not order_id:
+        return jsonify({"success": False, "message": "缺少订单号"}), 400
+
+    # 检查内存订单追踪
+    if order_id in _paid_orders and _paid_orders[order_id].get("paid"):
+        return jsonify({"success": True, "message": "支付成功！"})
+
+    return jsonify({"success": False, "message": "未检测到支付记录，请确认已扫码付款"})
 
 
 @user_bp.route("/api/pay-callback/<channel>", methods=["POST"])
@@ -266,13 +293,20 @@ def api_pay_callback(channel):
     if result["success"]:
         uid = result["user_id"]
         amt = result["amount"]
+        oid = result.get("order_id", "")
+        
+        # 标记订单已支付
+        if oid and oid in _paid_orders:
+            _paid_orders[oid]["paid"] = True
         
         # 判断订单类型：根据金额匹配套餐
+        matched = False
         for i, pkg in enumerate(config.RECHARGE_PACKAGES):
             if abs(pkg["amount"] - amt) < 0.01:
                 BillingService.purchase_credits(uid, i)
+                matched = True
                 break
-        else:
+        if not matched:
             # 非充值套餐，按会员处理
             BillingService.purchase_member(uid)
 

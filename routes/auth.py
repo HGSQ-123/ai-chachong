@@ -163,26 +163,56 @@ def api_send_code():
 
 
 def _send_email(to_email: str, code: str):
-    """通过SMTP发送验证码邮件"""
+    """发送验证码邮件（优先HTTP API，回退SMTP）"""
     import smtplib
     from email.mime.text import MIMEText
     from email.header import Header
 
-    msg = MIMEText(
-        f"您的验证码是：{code}\n\n"
-        f"有效期10分钟，请勿泄露给他人。\n\n"
-        f"—— {config.SITE_NAME}",
-        "plain", "utf-8"
-    )
-    msg["Subject"] = Header(f"[{config.SITE_NAME}] 验证码 {code}", "utf-8")
-    msg["From"] = config.SMTP_USER
-    msg["To"] = to_email
+    subject = f"[{config.SITE_NAME}] 验证码 {code}"
+    body = f"您的验证码是：{code}\n\n有效期10分钟，请勿泄露给他人。\n\n—— {config.SITE_NAME}"
 
-    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=10)
-    server.starttls()
-    server.login(config.SMTP_USER, config.SMTP_PASS)
-    server.sendmail(config.SMTP_USER, [to_email], msg.as_string())
-    server.quit()
+    # 方式1: Brevo HTTP API（Render友好，不依赖SMTP端口）
+    brevo_key = config.BREVO_API_KEY
+    if brevo_key:
+        try:
+            import requests as _req
+            r = _req.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "api-key": brevo_key,
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "sender": {"name": config.SITE_NAME, "email": config.SMTP_USER},
+                    "to": [{"email": to_email}],
+                    "subject": subject,
+                    "textContent": body,
+                },
+                timeout=10,
+            )
+            if r.status_code in (200, 201):
+                return  # 成功
+            print(f"[EMAIL] Brevo API failed: {r.status_code} {r.text[:200]}")
+        except Exception as e:
+            print(f"[EMAIL] Brevo API error: {e}")
+
+    # 方式2: SMTP（本地/非Render环境可用）
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = Header(subject, "utf-8")
+        msg["From"] = config.SMTP_USER
+        msg["To"] = to_email
+
+        server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=10)
+        server.starttls()
+        server.login(config.SMTP_USER, config.SMTP_PASS)
+        server.sendmail(config.SMTP_USER, [to_email], msg.as_string())
+        server.quit()
+        return
+    except Exception as e:
+        print(f"[EMAIL] SMTP failed: {e}")
+
+    raise Exception("All email methods failed")
 
 
 @auth_bp.route("/api/login", methods=["POST"])

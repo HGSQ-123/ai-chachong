@@ -101,7 +101,11 @@ class Config:
     ALIPAY_PRIVATE_KEY = os.getenv("ALIPAY_PRIVATE_KEY", "")
     ALIPAY_PUBLIC_KEY = os.getenv("ALIPAY_PUBLIC_KEY", "")
 
-    # ==================== 站点信息 ====================
+    # ==================== 邮件配置（验证码发送） ====================
+    SMTP_HOST = os.getenv("SMTP_HOST", "smtp.qq.com")
+    SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER = os.getenv("SMTP_USER", "")
+    SMTP_PASS = os.getenv("SMTP_PASS", "")  # QQ邮箱需用授权码，非密码
     SITE_NAME = os.getenv("SITE_NAME", "AI查重检测平台")
     SITE_DESCRIPTION = os.getenv("SITE_DESCRIPTION", "专业AI生成率检测与论文重复率查重平台")
     SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://localhost:5000")

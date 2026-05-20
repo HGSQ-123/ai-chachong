@@ -124,18 +124,64 @@ def api_send_code():
 
         code = _store_code(account)
 
-        # TODO: 生产环境接入真实短信/邮件服务
-        # 阿里云短信: https://www.aliyun.com/product/sms
-        # 腾讯云短信: https://cloud.tencent.com/product/sms
-        # 演示模式：直接返回验证码
-        return jsonify({
-            "success": True,
-            "message": f"验证码已发送（演示模式验证码：{code}）",
-            "code": code,  # 生产环境请删除此行
-        })
+        # 判断账号类型
+        is_email = "@" in account
+        is_phone = account.isdigit() and len(account) == 11
+
+        # ========== 发送验证码 ==========
+        if is_email and config.SMTP_USER and config.SMTP_PASS:
+            # 真实邮件发送
+            try:
+                _send_email(account, code)
+                return jsonify({"success": True, "message": f"验证码已发送至 {account}"})
+            except Exception as e:
+                print(f"[EMAIL] Send failed: {e}")
+                # 邮件失败回退演示模式
+                return jsonify({
+                    "success": True,
+                    "message": f"邮件发送失败，演示模式验证码：{code}",
+                    "code": code,
+                })
+        elif is_phone:
+            # TODO: 接入短信服务
+            return jsonify({
+                "success": True,
+                "message": f"验证码已发送（演示模式验证码：{code}）",
+                "code": code,
+            })
+        else:
+            # 演示模式
+            return jsonify({
+                "success": True,
+                "message": f"验证码已发送（演示模式验证码：{code}）",
+                "code": code,
+            })
 
     except Exception as e:
         return jsonify({"success": False, "message": str(e)}), 500
+
+
+def _send_email(to_email: str, code: str):
+    """通过SMTP发送验证码邮件"""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.header import Header
+
+    msg = MIMEText(
+        f"您的验证码是：{code}\n\n"
+        f"有效期10分钟，请勿泄露给他人。\n\n"
+        f"—— {config.SITE_NAME}",
+        "plain", "utf-8"
+    )
+    msg["Subject"] = Header(f"[{config.SITE_NAME}] 验证码 {code}", "utf-8")
+    msg["From"] = config.SMTP_USER
+    msg["To"] = to_email
+
+    server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT, timeout=10)
+    server.starttls()
+    server.login(config.SMTP_USER, config.SMTP_PASS)
+    server.sendmail(config.SMTP_USER, [to_email], msg.as_string())
+    server.quit()
 
 
 @auth_bp.route("/api/login", methods=["POST"])

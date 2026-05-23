@@ -110,7 +110,7 @@ class Config:
     RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")  # Resend HTTP API（更简单，100封/天免费）
     SITE_NAME = os.getenv("SITE_NAME", "AI查重检测平台")
     SITE_DESCRIPTION = os.getenv("SITE_DESCRIPTION", "专业AI生成率检测与论文重复率查重平台")
-    SITE_DOMAIN = os.getenv("SITE_DOMAIN", "http://localhost:5000")
+    SITE_DOMAIN = os.getenv("SITE_DOMAIN", "https://ai-chachong.onrender.com")
     CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "support@aichachong.com")
 
     # ==================== 广告位配置 ====================

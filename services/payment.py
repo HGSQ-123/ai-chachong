@@ -122,14 +122,18 @@ class PaymentService:
             order_id = f"XR{int(time.time())}{user_id}"
 
             # xorpay API 参数
+            site_domain = config.SITE_DOMAIN
+            if "localhost" in site_domain or "127.0.0.1" in site_domain:
+                site_domain = "https://ai-chachong.onrender.com"
+            
             payload = {
                 "aid": config.XORPAY_APP_ID,
                 "name": description,
                 "pay_type": "native",      # 扫码支付
                 "price": str(amount),
                 "order_id": order_id,
-                "notify_url": f"{config.SITE_DOMAIN}/user/api/pay-callback/xorpay",
-                "return_url": f"{config.SITE_DOMAIN}/user/center",
+                "notify_url": f"{site_domain}/user/api/pay-callback/xorpay",
+                "return_url": f"{site_domain}/user/center",
                 "more": str(user_id),       # 透传用户ID
             }
 
@@ -158,11 +162,17 @@ class PaymentService:
                     }
                 else:
                     # xorpay返回错误，降级模拟
+                    import sys
+                    print(f"[XORPAY] API error: {data.get('status')} {data.get('message','')}", file=sys.stderr)
                     return cls._create_mock_order(user_id, amount, description, order_type)
             else:
+                import sys
+                print(f"[XORPAY] HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
                 return cls._create_mock_order(user_id, amount, description, order_type)
 
-        except Exception:
+        except Exception as e:
+            import sys
+            print(f"[XORPAY] Exception: {e}", file=sys.stderr)
             return cls._create_mock_order(user_id, amount, description, order_type)
 
     @classmethod

@@ -1,8 +1,12 @@
 import requests, hashlib, time
 
-# Read .env
-with open(r'c:\Users\30855\Desktop\AI-chachong\.env', encoding='utf-8') as f:
-    content = f.read()
+# Read .env with proper encoding
+try:
+    with open(r'c:\Users\30855\Desktop\AI-chachong\.env', encoding='utf-8') as f:
+        content = f.read()
+except:
+    with open(r'c:\Users\30855\Desktop\AI-chachong\.env', encoding='latin-1') as f:
+        content = f.read()
 
 secret = None
 for line in content.split('\n'):

@@ -109,12 +109,10 @@ class PaymentService:
     def _create_xorpay_order(cls, user_id, amount, description, order_type):
         """
         xorpay 统一下单
-        文档: https://xorpay.com/api
-
-        xorpay 是成熟的个人支付聚合平台:
-        - 支持微信/支付宝/云闪付
-        - 个人即可注册，无需营业执照
-        - 费率 0.6% + ¥0.2/笔
+        文档: https://xorpay.com/doc/native.html
+        
+        新版API: POST https://xorpay.com/api/pay/{aid}
+        格式: application/x-www-form-urlencoded
         """
         try:
             import requests
@@ -127,14 +125,13 @@ class PaymentService:
                 site_domain = "https://ai-chachong.onrender.com"
             
             payload = {
-                "aid": config.XORPAY_APP_ID,
                 "name": description,
-                "pay_type": "native",      # 扫码支付
+                "pay_type": "native",
                 "price": str(amount),
                 "order_id": order_id,
                 "notify_url": f"{site_domain}/user/api/pay-callback/xorpay",
-                "return_url": f"{site_domain}/user/center",
-                "more": str(user_id),       # 透传用户ID
+                "order_uid": str(user_id),
+                "more": str(user_id),
             }
 
             # xorpay 签名
@@ -142,16 +139,18 @@ class PaymentService:
             sign = hashlib.md5((sign_str + config.XORPAY_API_SECRET).encode()).hexdigest()
             payload["sign"] = sign
 
+            api_url = f"https://xorpay.com/api/pay/{config.XORPAY_APP_ID}"
             resp = requests.post(
-                "https://xorpay.com/api/pay/native",
-                json=payload,
+                api_url,
+                data=payload,  # form-encoded, not JSON
                 timeout=30,
             )
 
             if resp.status_code == 200:
                 data = resp.json()
                 if data.get("status") == "ok":
-                    qr_url = data.get("qr", "")
+                    # 新版API: qr 在 info.qr 里
+                    qr_url = data.get("info", {}).get("qr", "") or data.get("qr", "")
                     return {
                         "success": True,
                         "order_id": order_id,
@@ -161,9 +160,8 @@ class PaymentService:
                         "channel": "xorpay",
                     }
                 else:
-                    # xorpay返回错误，降级模拟
                     import sys
-                    print(f"[XORPAY] API error: {data.get('status')} {data.get('message','')}", file=sys.stderr)
+                    print(f"[XORPAY] API error: {data.get('status')} {data}", file=sys.stderr)
                     return cls._create_mock_order(user_id, amount, description, order_type)
             else:
                 import sys

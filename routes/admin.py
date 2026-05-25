@@ -164,29 +164,29 @@ def api_test_xorpay():
     
     order_id = f"XR{int(time.time())}diag"
     payload = {
-        "aid": config.XORPAY_APP_ID,
         "name": "AI查重-诊断测试",
         "pay_type": "native",
         "price": "0.01",
         "order_id": order_id,
         "notify_url": f"{site_domain}/user/api/pay-callback/xorpay",
-        "return_url": f"{site_domain}/user/center",
+        "order_uid": "diag",
         "more": "diag",
     }
     sign_str = payload["name"] + payload["pay_type"] + payload["price"] + payload["order_id"] + payload["notify_url"]
     sign = hashlib.md5((sign_str + config.XORPAY_API_SECRET).encode()).hexdigest()
     payload["sign"] = sign
     
-    result["request"] = {"url": "https://xorpay.com/api/pay/native", "domain_used": site_domain, "order_id": order_id}
+    api_url = f"https://xorpay.com/api/pay/{config.XORPAY_APP_ID}"
+    result["request"] = {"url": api_url, "domain_used": site_domain, "order_id": order_id}
     
     try:
-        r = req.post("https://xorpay.com/api/pay/native", json=payload, timeout=15)
+        r = req.post(api_url, data=payload, timeout=15)
         result["http_status"] = r.status_code
-        result["response"] = r.text[:500]
+        result["response"] = r.text[:800]
         if r.status_code == 200:
             data = r.json()
             result["status"] = data.get("status")
-            result["qr_available"] = bool(data.get("qr"))
+            result["qr_available"] = bool(data.get("info", {}).get("qr") or data.get("qr"))
     except Exception as e:
         result["error"] = str(e)
     

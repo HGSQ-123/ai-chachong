@@ -144,3 +144,50 @@ def api_config_status():
             "packages": config.RECHARGE_PACKAGES,
         }
     })
+
+
+@admin_bp.route("/api/test-xorpay")
+def api_test_xorpay():
+    """诊断端点：直接测试xorpPay API并返回原始响应"""
+    import requests as req
+    import hashlib, time
+    
+    result = {"xorpay_configured": bool(config.XORPAY_APP_ID and config.XORPAY_API_SECRET)}
+    
+    if not config.XORPAY_APP_ID or not config.XORPAY_API_SECRET:
+        result["error"] = "xorpPay未配置"
+        return jsonify(result)
+    
+    site_domain = config.SITE_DOMAIN
+    if "localhost" in site_domain or "127.0.0.1" in site_domain:
+        site_domain = "https://ai-chachong.onrender.com"
+    
+    order_id = f"XR{int(time.time())}diag"
+    payload = {
+        "aid": config.XORPAY_APP_ID,
+        "name": "AI查重-诊断测试",
+        "pay_type": "native",
+        "price": "0.01",
+        "order_id": order_id,
+        "notify_url": f"{site_domain}/user/api/pay-callback/xorpay",
+        "return_url": f"{site_domain}/user/center",
+        "more": "diag",
+    }
+    sign_str = payload["name"] + payload["pay_type"] + payload["price"] + payload["order_id"] + payload["notify_url"]
+    sign = hashlib.md5((sign_str + config.XORPAY_API_SECRET).encode()).hexdigest()
+    payload["sign"] = sign
+    
+    result["request"] = {"url": "https://xorpay.com/api/pay/native", "domain_used": site_domain, "order_id": order_id}
+    
+    try:
+        r = req.post("https://xorpay.com/api/pay/native", json=payload, timeout=15)
+        result["http_status"] = r.status_code
+        result["response"] = r.text[:500]
+        if r.status_code == 200:
+            data = r.json()
+            result["status"] = data.get("status")
+            result["qr_available"] = bool(data.get("qr"))
+    except Exception as e:
+        result["error"] = str(e)
+    
+    return jsonify(result)

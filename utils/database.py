@@ -25,6 +25,10 @@ class TursoConn:
         self._idx = 0
         self.rowcount = 0
         self.lastrowid = 0
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
     def cursor(self):
         return self
     def execute(self, sql, params=None):
@@ -50,13 +54,12 @@ class TursoConn:
                 elif col.get("type") == "real" and v is not None:
                     v = float(v)
                 d[col["name"]] = v
-            # 同时支持 .key 访问
-            class Row:
-                def __init__(self, d): self.__dict__.update(d); self._d = d
-                def __getitem__(self, k): return self._d[k]
-                def __contains__(self, k): return k in self._d
-                def get(self, k, d=None): return self._d.get(k, d)
-                def keys(self): return self._d.keys()
+            # 同时支持 dict 和 .key 访问
+            class Row(dict):
+                def __getattr__(self, k):
+                    return self.get(k)
+                def __setattr__(self, k, v):
+                    self[k] = v
             self._rows.append(Row(d))
         self._idx = 0
         self.rowcount = len(self._rows)
@@ -131,7 +134,8 @@ class DatabaseManager:
                 yield conn
                 return
             except Exception as e:
-                print(f"[DB] Turso failed: {e}")
+                print(f"[DB] Turso failed: {e}", file=__import__('sys').stderr)
+                # fall through to SQLite
         # SQLite fallback
         db_path = self.db_path if not self._turso else os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "detection.db")

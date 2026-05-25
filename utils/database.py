@@ -107,7 +107,7 @@ class DatabaseManager:
         return cls._instance
 
     def __init__(self, db_path=None):
-        if self._initialized:
+        if self._initialized and getattr(self, '_tables_ok', False):
             return
         self._turso = bool(TURSO_URL and TURSO_TOKEN)
         if self._turso:
@@ -124,6 +124,7 @@ class DatabaseManager:
             self.db_path = db_path
         self._init_tables()
         self._initialized = True
+        self._tables_ok = True
 
     def _make_connection(self):
         """创建数据库连接（Turso或SQLite）"""
@@ -199,6 +200,8 @@ class DatabaseManager:
                     expires TEXT NOT NULL
                 )
             """)
+
+            # 兼容旧表
 
             # 兼容旧表
             for col_sql in [

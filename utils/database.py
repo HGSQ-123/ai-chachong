@@ -184,6 +184,15 @@ class DatabaseManager:
                 )
             """)
 
+            # 验证码表（跨worker共享，替代内存字典）
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS verify_codes (
+                    account TEXT PRIMARY KEY,
+                    code TEXT NOT NULL,
+                    expires TEXT NOT NULL
+                )
+            """)
+
             # 兼容旧表
             for col_sql in [
                 "ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",

@@ -13,9 +13,6 @@ from utils.decorators import guest_only, login_required
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
-# 内存验证码存储 { phone_or_email: {"code":"123456","expires":timestamp} }
-_verify_codes = {}
-
 
 def _generate_code(length=6) -> str:
     """生成数字验证码"""
@@ -23,24 +20,28 @@ def _generate_code(length=6) -> str:
 
 
 def _store_code(account: str) -> str:
-    """存储验证码并返回"""
+    """存储验证码到数据库（跨worker共享）"""
     code = _generate_code()
-    _verify_codes[account] = {"code": code, "expires": time.time() + 600}
+    with db.get_connection() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO verify_codes (account, code, expires)
+               VALUES (?, ?, datetime('now', '+10 minutes'))""",
+            (account, code)
+        )
     return code
 
 
 def _verify_code(account: str, code: str) -> bool:
-    """验证验证码"""
-    data = _verify_codes.get(account)
-    if not data:
-        return False
-    if time.time() > data["expires"]:
-        del _verify_codes[account]
-        return False
-    if data["code"] != code:
-        return False
-    del _verify_codes[account]
-    return True
+    """从数据库验证验证码"""
+    with db.get_connection() as conn:
+        row = conn.execute(
+            "SELECT code FROM verify_codes WHERE account = ? AND expires > datetime('now')",
+            (account,)
+        ).fetchone()
+        if not row:
+            return False
+        row_code = row["code"] if isinstance(row, dict) else row[0]
+        return row_code == code
 
 
 @auth_bp.route("/login", methods=["GET"])
@@ -119,9 +120,13 @@ def api_send_code():
             return jsonify({"success": False, "message": "请输入手机号或邮箱"}), 400
 
         # 60秒内不能重复发送
-        existing = _verify_codes.get(account)
-        if existing and time.time() - (existing["expires"] - 600) < 60:
-            return jsonify({"success": False, "message": "请60秒后再试"}), 429
+        with db.get_connection() as conn:
+            recent = conn.execute(
+                "SELECT expires FROM verify_codes WHERE account = ? AND expires > datetime('now','-9 minutes')",
+                (account,)
+            ).fetchone()
+            if recent:
+                return jsonify({"success": False, "message": "请60秒后再试"}), 429
 
         code = _store_code(account)
 

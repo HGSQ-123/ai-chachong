@@ -125,24 +125,14 @@ class DatabaseManager:
         self._init_tables()
         self._initialized = True
 
-    @contextmanager
-    def get_connection(self):
-        """获取数据库连接（优先Turso，失败则SQLite）"""
+    def _make_connection(self):
+        """创建数据库连接（Turso或SQLite）"""
         if self._turso:
-            conn = None
             try:
-                conn = TursoConn(TURSO_URL, TURSO_TOKEN)
-                yield conn
-                return
+                return TursoConn(TURSO_URL, TURSO_TOKEN)
             except Exception as e:
                 import sys
                 print(f"[DB] Turso failed: {e}", file=sys.stderr)
-                if conn is None:
-                    # Turso连接失败，降级SQLite
-                    pass
-                else:
-                    # Turso连上了但操作失败，直接抛异常
-                    raise
         # SQLite fallback
         db_path = self.db_path if not self._turso else os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "detection.db")
@@ -151,14 +141,24 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    @contextmanager
+    def get_connection(self):
+        """获取数据库连接（Turso优先，失败则SQLite）"""
+        conn = self._make_connection()
+        is_turso = isinstance(conn, TursoConn)
         try:
             yield conn
-            conn.commit()
+            if not is_turso:
+                conn.commit()
         except Exception:
-            conn.rollback()
+            if not is_turso:
+                conn.rollback()
             raise
         finally:
-            conn.close()
+            if not is_turso:
+                conn.close()
 
     def _init_tables(self):
         """初始化数据库表结构"""

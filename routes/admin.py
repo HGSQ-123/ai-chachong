@@ -8,6 +8,7 @@ DeepSeek API 快速配置与测试工具
 from flask import Blueprint, jsonify, request, render_template
 from config import config
 from utils.decorators import login_required
+from utils.database import db
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -196,10 +197,10 @@ def api_test_xorpay():
 @admin_bp.route("/api/db-status")
 def api_db_status():
     """诊断：数据库连接状态"""
-    import os as _os
+    import os
     result = {
-        "turso_url": bool(_os.getenv("TURSO_DB_URL")),
-        "turso_token": bool(_os.getenv("TURSO_AUTH_TOKEN")),
+        "turso_url": bool(os.getenv("TURSO_DB_URL")),
+        "turso_token": bool(os.getenv("TURSO_AUTH_TOKEN")),
         "db_path": str(db.db_path)[:80],
         "using_turso": db._turso,
     }

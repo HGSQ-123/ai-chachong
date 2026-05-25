@@ -201,14 +201,18 @@ def api_db_status():
     result = {
         "turso_url": bool(os.getenv("TURSO_DB_URL")),
         "turso_token": bool(os.getenv("TURSO_AUTH_TOKEN")),
-        "db_path": str(db.db_path)[:80],
-        "using_turso": db._turso,
+        "using_turso": getattr(db, '_turso', False),
     }
     try:
         with db.get_connection() as conn:
-            cursor = conn.execute("SELECT COUNT(*) as c FROM users")
-            row = cursor.fetchone()
-            result["user_count"] = row["c"] if isinstance(row, dict) else row[0]
+            cur = conn.execute("SELECT COUNT(*) as c FROM users")
+            row = cur.fetchone()
+            if isinstance(row, dict):
+                result["user_count"] = row.get("c", 0)
+            elif hasattr(row, 'keys'):
+                result["user_count"] = row["c"]
+            else:
+                result["user_count"] = row[0] if row else 0
             result["db_ok"] = True
     except Exception as e:
         result["db_ok"] = False

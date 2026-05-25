@@ -107,7 +107,7 @@ class DatabaseManager:
         return cls._instance
 
     def __init__(self, db_path=None):
-        if self._initialized and getattr(self, '_tables_ok', False):
+        if self._initialized:
             return
         self._turso = bool(TURSO_URL and TURSO_TOKEN)
         if self._turso:
@@ -124,13 +124,18 @@ class DatabaseManager:
             self.db_path = db_path
         self._init_tables()
         self._initialized = True
-        self._tables_ok = True
 
     def _make_connection(self):
         """创建数据库连接（Turso或SQLite）"""
         if self._turso:
             try:
-                return TursoConn(TURSO_URL, TURSO_TOKEN)
+                conn = TursoConn(TURSO_URL, TURSO_TOKEN)
+                # 确保关键表存在（弥补首次初始化失败）
+                try:
+                    conn.execute("CREATE TABLE IF NOT EXISTS verify_codes (account TEXT PRIMARY KEY, code TEXT NOT NULL, expires TEXT NOT NULL)")
+                except Exception:
+                    pass
+                return conn
             except Exception as e:
                 import sys
                 print(f"[DB] Turso failed: {e}", file=sys.stderr)

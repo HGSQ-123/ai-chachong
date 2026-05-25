@@ -12,6 +12,9 @@ from services.billing import BillingService
 
 user_bp = Blueprint("user", __name__, url_prefix="/user")
 
+# 内存订单追踪 { order_id: {"paid": bool, "user_id": int, "amount": float} }
+_paid_orders = {}
+
 
 @user_bp.route("/center")
 @login_required
@@ -250,10 +253,6 @@ def api_pay_mock_confirm():
         })
     else:
         return jsonify({"success": False, "message": result.get("message", "开通失败")}), 500
-
-
-# 内存订单追踪 { order_id: {"paid": bool, "user_id": int, "amount": float} }
-_paid_orders = {}
 
 
 @user_bp.route("/api/check-pay")

@@ -6,7 +6,7 @@ services:
     name: ai-chachong
     env: python
     buildCommand: pip install -r requirements.txt && apt-get update -qq && apt-get install -y -qq tesseract-ocr tesseract-ocr-chi-sim poppler-utils 2>/dev/null || true
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     # 免费层配置
     plan: free
     # 环境变量

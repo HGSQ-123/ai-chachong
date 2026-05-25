@@ -13,6 +13,9 @@ from utils.decorators import guest_only, login_required
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 
+# 验证码存储（内存字典+数据库双写，确保可用）
+_verify_codes = {}
+
 
 def _generate_code(length=6) -> str:
     """生成数字验证码"""
@@ -20,28 +23,40 @@ def _generate_code(length=6) -> str:
 
 
 def _store_code(account: str) -> str:
-    """存储验证码到数据库（跨worker共享）"""
+    """存储验证码（内存优先，数据库备用）"""
     code = _generate_code()
-    with db.get_connection() as conn:
-        conn.execute(
-            """INSERT OR REPLACE INTO verify_codes (account, code, expires)
-               VALUES (?, ?, datetime('now', '+10 minutes'))""",
-            (account, code)
-        )
+    _verify_codes[account] = {"code": code, "expires": time.time() + 600}
+    # 尝试写数据库（失败不影响）
+    try:
+        with db.get_connection() as conn:
+            conn.execute(
+                """INSERT OR REPLACE INTO verify_codes (account, code, expires)
+                   VALUES (?, ?, datetime('now', '+10 minutes'))""",
+                (account, code)
+            )
+    except Exception:
+        pass
     return code
 
 
 def _verify_code(account: str, code: str) -> bool:
-    """从数据库验证验证码"""
-    with db.get_connection() as conn:
-        row = conn.execute(
-            "SELECT code FROM verify_codes WHERE account = ? AND expires > datetime('now')",
-            (account,)
-        ).fetchone()
-        if not row:
-            return False
-        row_code = row["code"] if isinstance(row, dict) else row[0]
-        return row_code == code
+    """验证验证码（内存优先）"""
+    data = _verify_codes.get(account)
+    if data and time.time() < data["expires"] and data["code"] == code:
+        return True
+    # 回退数据库
+    try:
+        with db.get_connection() as conn:
+            row = conn.execute(
+                "SELECT code FROM verify_codes WHERE account = ? AND expires > datetime('now')",
+                (account,)
+            ).fetchone()
+            if row:
+                row_code = row["code"] if isinstance(row, dict) else row[0]
+                return row_code == code
+    except Exception:
+        pass
+    return False
 
 
 @auth_bp.route("/login", methods=["GET"])

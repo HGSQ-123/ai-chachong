@@ -191,3 +191,25 @@ def api_test_xorpay():
         result["error"] = str(e)
     
     return jsonify(result)
+
+
+@admin_bp.route("/api/db-status")
+def api_db_status():
+    """诊断：数据库连接状态"""
+    import os as _os
+    result = {
+        "turso_url": bool(_os.getenv("TURSO_DB_URL")),
+        "turso_token": bool(_os.getenv("TURSO_AUTH_TOKEN")),
+        "db_path": str(db.db_path)[:80],
+        "using_turso": db._turso,
+    }
+    try:
+        with db.get_connection() as conn:
+            cursor = conn.execute("SELECT COUNT(*) as c FROM users")
+            row = cursor.fetchone()
+            result["user_count"] = row["c"] if isinstance(row, dict) else row[0]
+            result["db_ok"] = True
+    except Exception as e:
+        result["db_ok"] = False
+        result["error"] = str(e)
+    return jsonify(result)

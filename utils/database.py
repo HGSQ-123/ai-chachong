@@ -127,15 +127,22 @@ class DatabaseManager:
 
     @contextmanager
     def get_connection(self):
-        """获取数据库连接"""
+        """获取数据库连接（优先Turso，失败则SQLite）"""
         if self._turso:
+            conn = None
             try:
                 conn = TursoConn(TURSO_URL, TURSO_TOKEN)
                 yield conn
                 return
             except Exception as e:
-                print(f"[DB] Turso failed: {e}", file=__import__('sys').stderr)
-                # fall through to SQLite
+                import sys
+                print(f"[DB] Turso failed: {e}", file=sys.stderr)
+                if conn is None:
+                    # Turso连接失败，降级SQLite
+                    pass
+                else:
+                    # Turso连上了但操作失败，直接抛异常
+                    raise
         # SQLite fallback
         db_path = self.db_path if not self._turso else os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "detection.db")

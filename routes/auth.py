@@ -134,14 +134,10 @@ def api_send_code():
         if not account:
             return jsonify({"success": False, "message": "请输入手机号或邮箱"}), 400
 
-        # 60秒内不能重复发送
-        with db.get_connection() as conn:
-            recent = conn.execute(
-                "SELECT expires FROM verify_codes WHERE account = ? AND expires > datetime('now','-9 minutes')",
-                (account,)
-            ).fetchone()
-            if recent:
-                return jsonify({"success": False, "message": "请60秒后再试"}), 429
+        # 60秒内不能重复发送（用内存字典，不用数据库）
+        last = _verify_codes.get(account)
+        if last and time.time() - (last["expires"] - 600) < 60:
+            return jsonify({"success": False, "message": "请60秒后再试"}), 429
 
         code = _store_code(account)
 

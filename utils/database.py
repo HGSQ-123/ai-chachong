@@ -10,9 +10,9 @@ import json
 from datetime import datetime
 from contextlib import contextmanager
 
-# Turso 配置（优先环境变量，回退硬编码）
-TURSO_URL = os.getenv("TURSO_DB_URL", "") or "libsql://aichachong-hgsq-123.aws-ap-northeast-1.turso.io"
-TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "") or "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzkyNDYyMDgsImlkIjoiMDE5ZTQzNTUtNTkwMS03NTA3LWJjZTMtOWQyYTIzYWQ3YzA1IiwicmlkIjoiOWE2ZDBkNTMtMTZlNS00YzMxLWE0ODQtOTJmYWMxM2FlNmVjIn0.DPyWDyqAnUHUeO5-qIkhYubK_S5SxKKYEvRyHxDNyEsp8Aqr_ryv5nm40rOd9-G8UySdkhaKLF129v88RfRBDg"
+# Turso 配置（环境变量优先，留空则本地SQLite；Turso token已过期故不再硬编码）
+TURSO_URL = os.getenv("TURSO_DB_URL", "")
+TURSO_TOKEN = os.getenv("TURSO_AUTH_TOKEN", "")
 
 
 class TursoConn:

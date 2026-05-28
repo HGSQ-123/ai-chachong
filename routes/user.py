@@ -175,7 +175,7 @@ def api_purchase_credits():
     """
     购买充值额度API
     请求: {"package_index": 0-4}
-    0=¥5/1万字 1=¥10/2万字 2=¥20/5万字 3=¥50/15万字 4=¥100/30万字
+    0=¥0.49/1千字 1=¥5/1.02万字 2=¥10/2.04万字 3=¥20/4.08万字 4=¥50/10.2万字 5=¥100/20.4万字
     """
     from services.payment import PaymentService
 
@@ -336,7 +336,7 @@ def api_task_status(task_id):
 def api_ai_rewrite():
     """
     AI改写接口（DeepSeek驱动）
-    计费：首次¥2 → 会员每月免费3次 → 后续0.5元/千字
+    计费：首次免费 → 会员每月免费3次 → 后续按Pro版计费
     """
     try:
         data = request.get_json()
@@ -400,10 +400,10 @@ def _calc_rewrite_cost(user: dict, char_count: int) -> dict:
     from datetime import datetime
     quota = BillingService.get_available_quota(user)
 
-    # 1. 首次改写 ¥2
+    # 1. 首次改写免费
     from utils.database import db
     if db.is_first_reduce_ai(user["id"]) and db.is_first_reduce_plagiarism(user["id"]):
-        return {"type": "first", "cost": 2.0, "label": "首次改写 ¥2", "words": 0}
+        return {"type": "first", "cost": 0, "label": "首次免费改写", "words": 0}
 
     # 2. 会员免费改写
     if quota["is_member"]:

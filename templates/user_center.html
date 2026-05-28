@@ -78,7 +78,7 @@
             {% if not quota_info.is_member %}
             <a href="{{ url_for('user.member_page') }}" class="btn btn-gold">� 充值额度</a>
             {% endif %}
-            <a href="{{ url_for('user.invite_page') }}" class="btn btn-outline">🎁 邀请好友(+10000字)</a>
+            <a href="{{ url_for('user.invite_page') }}" class="btn btn-outline">🎁 邀请好友(赠额度)</a>
             <a href="{{ url_for('auth.logout') }}" class="btn btn-outline">🚪 退出登录</a>
         </div>
 

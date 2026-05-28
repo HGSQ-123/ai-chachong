@@ -457,7 +457,7 @@ def api_task_status(task_id):
 def api_reduce_ai():
     """
     降低AI生成率
-    计费：首次¥2（不消耗额度），后续0.5元/千字（与检测共享字数额度）
+    计费：首次免费，后续按Pro版计费（0.49元/千字）
     """
     import math
     try:
@@ -602,7 +602,7 @@ def _simulate_reduce_ai(text: str):
 def api_reduce_plagiarism():
     """
     降低查重率
-    计费：首次¥2（不消耗额度），后续0.5元/千字（与检测共享字数额度）
+    计费：首次免费，后续按Pro版计费（0.49元/千字）
     """
     import math
     try:
@@ -626,7 +626,7 @@ def api_reduce_plagiarism():
 
         is_first = db.is_first_reduce_plagiarism(user_id)
         if is_first:
-            billing_info = {"type": "first", "cost": config.REDUCE_PLAGIARISM_FIRST_PRICE, "label": "首次降低查重率 ¥2"}
+            billing_info = {"type": "first", "cost": 0, "label": "首次免费降低查重率"}
         else:
             char_count = len(text)
             k_chars = math.ceil(char_count / 1000)

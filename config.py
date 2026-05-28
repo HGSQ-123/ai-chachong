@@ -118,7 +118,7 @@ class Config:
 
     # ==================== 广告位配置 ====================
     # 公告内容（支持HTML）
-    ANNOUNCEMENT_TEXT = "🎉 首次双检测<strong>免费</strong>+加赠5000字！降低AI率首次仅<strong>¥2</strong>！邀请好友注册送<strong>10000字</strong>！"
+    ANNOUNCEMENT_TEXT = "🎉 每天<strong>1次免费</strong>检测 · Pro版仅<strong>¥0.49/千字</strong> · 首充翻倍！充值额永久有效"
     ANNOUNCEMENT_ENABLED = True
 
     # 广告位内容

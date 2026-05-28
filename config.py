@@ -69,8 +69,8 @@ class Config:
     MEMBER_FREE_REWRITES = int(os.getenv("MEMBER_FREE_REWRITES", 3))  # 会员每月免费改写次数
 
     # ==================== 第三方API配置 ====================
-    # DeepSeek大模型（AI降重改写）- 留空则使用模拟算法
-    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
+    # DeepSeek大模型（AI降重改写/检测）
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "sk-d1d9af8bae1748a6be3c917e4e5b48ff")
 
     # AI检测API（留空则使用内置模拟算法）
     AI_DETECTION_API_KEY = os.getenv("AI_DETECTION_API_KEY", "")

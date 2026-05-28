@@ -480,8 +480,10 @@ def api_reduce_ai():
             return jsonify({"success": False, "message": "请先登录后使用此功能", "need_login": True}), 401
 
         is_first = db.is_first_reduce_ai(user_id)
-        if is_first:
-            billing_info = {"type": "first", "cost": config.REDUCE_AI_FIRST_PRICE, "label": "首次降低AI率 ¥2"}
+        if is_first and config.REDUCE_AI_FIRST_PRICE <= 0:
+            billing_info = {"type": "first", "cost": 0, "label": "首次免费降低AI率"}
+        elif is_first:
+            billing_info = {"type": "first", "cost": config.REDUCE_AI_FIRST_PRICE, "label": f"首次降低AI率 ¥{config.REDUCE_AI_FIRST_PRICE}"}
         else:
             # 按字数计费，从充值额度扣除
             char_count = len(text)

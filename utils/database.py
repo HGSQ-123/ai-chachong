@@ -357,7 +357,7 @@ class DatabaseManager:
 
     def update_user(self, user_id: int, **kwargs) -> bool:
         """通用更新用户字段"""
-        allowed = {"username", "email", "password", "phone"}
+        allowed = {"username", "email", "password_hash", "phone"}
         fields = []
         values = []
         for k, v in kwargs.items():

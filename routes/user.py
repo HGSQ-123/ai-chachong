@@ -96,10 +96,10 @@ def api_change_password():
     if not user:
         return jsonify({"success": False, "message": "用户不存在"}), 404
     from werkzeug.security import check_password_hash, generate_password_hash
-    if not check_password_hash(user["password"], old_pwd):
+    if not check_password_hash(user.get("password_hash", ""), old_pwd):
         return jsonify({"success": False, "message": "原密码错误"}), 400
     hashed = generate_password_hash(new_pwd, method="scrypt")
-    db.update_user(session["user_id"], password=hashed)
+    db.update_user(session["user_id"], password_hash=hashed)
     return jsonify({"success": True, "message": "密码修改成功"})
 
 

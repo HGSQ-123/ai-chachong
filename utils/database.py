@@ -355,6 +355,22 @@ class DatabaseManager:
                         (new_password_hash, user_id))
             return True
 
+    def update_user(self, user_id: int, **kwargs) -> bool:
+        """通用更新用户字段"""
+        allowed = {"username", "email", "password", "phone"}
+        fields = []
+        values = []
+        for k, v in kwargs.items():
+            if k in allowed:
+                fields.append(f"{k} = ?")
+                values.append(v)
+        if not fields:
+            return False
+        values.append(user_id)
+        with self.get_connection() as conn:
+            conn.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", values)
+            return True
+
     def update_user_quota(self, user_id: int, free_quota_used: int = None,
                           member_quota_used: int = None) -> bool:
         """更新用户额度使用量"""

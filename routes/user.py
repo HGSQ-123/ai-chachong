@@ -81,6 +81,47 @@ def api_get_quota():
     })
 
 
+@user_bp.route("/api/change-password", methods=["POST"])
+@login_required
+def api_change_password():
+    """修改密码"""
+    data = request.get_json() or {}
+    old_pwd = data.get("old_password", "")
+    new_pwd = data.get("new_password", "")
+    if not old_pwd or not new_pwd:
+        return jsonify({"success": False, "message": "请填写完整"}), 400
+    if len(new_pwd) < 6:
+        return jsonify({"success": False, "message": "新密码至少6位"}), 400
+    user = db.get_user_by_id(session["user_id"])
+    if not user:
+        return jsonify({"success": False, "message": "用户不存在"}), 404
+    from werkzeug.security import check_password_hash, generate_password_hash
+    if not check_password_hash(user["password"], old_pwd):
+        return jsonify({"success": False, "message": "原密码错误"}), 400
+    hashed = generate_password_hash(new_pwd, method="scrypt")
+    db.update_user(session["user_id"], password=hashed)
+    return jsonify({"success": True, "message": "密码修改成功"})
+
+
+@user_bp.route("/api/update-profile", methods=["POST"])
+@login_required
+def api_update_profile():
+    """更新个人资料"""
+    data = request.get_json() or {}
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    if not username:
+        return jsonify({"success": False, "message": "用户名不能为空"}), 400
+    if len(username) < 2 or len(username) > 20:
+        return jsonify({"success": False, "message": "用户名2-20个字符"}), 400
+    # 检查用户名是否被占用
+    existing = db.get_user_by_username(username)
+    if existing and existing["id"] != session["user_id"]:
+        return jsonify({"success": False, "message": "用户名已被占用"}), 400
+    db.update_user(session["user_id"], username=username, email=email)
+    return jsonify({"success": True, "message": "资料更新成功"})
+
+
 @user_bp.route("/api/records")
 @login_required
 def api_get_records():

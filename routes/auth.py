@@ -146,17 +146,19 @@ def api_send_code():
         is_phone = account.isdigit() and len(account) == 11
 
         # ========== 发送验证码 ==========
-        if is_email and config.SMTP_USER and config.SMTP_PASS:
-            # 真实邮件发送
+        if is_email:
+            send_ok = False
             try:
                 _send_email(account, code)
-                return jsonify({"success": True, "message": f"验证码已发送至 {account}"})
+                send_ok = True
             except Exception as e:
-                print(f"[EMAIL] Send failed: {e}")
-                # 邮件失败回退演示模式
+                print(f"[EMAIL] All methods failed: {e}")
+            if send_ok:
+                return jsonify({"success": True, "message": f"验证码已发送至 {account}"})
+            else:
                 return jsonify({
                     "success": True,
-                    "message": f"邮件发送失败，演示模式验证码：{code}",
+                    "message": f"邮件服务暂不可用，演示验证码：{code}",
                     "code": code,
                 })
         elif is_phone:
@@ -187,7 +189,7 @@ def _send_email(to_email: str, code: str):
     subject = f"[{config.SITE_NAME}] 验证码 {code}"
     body = f"您的验证码是：{code}\n\n有效期10分钟，请勿泄露给他人。\n\n—— {config.SITE_NAME}"
 
-    # 方式1: Resend HTTP API（最简单，100封/天免费）
+    # 方式1: Resend HTTP API（100封/天免费，但免费版只能发验证过的邮箱）
     resend_key = config.RESEND_API_KEY
     if resend_key:
         try:
@@ -206,11 +208,13 @@ def _send_email(to_email: str, code: str):
                 },
                 timeout=10,
             )
-            if r.status_code in (200, 201):
-                return  # 成功
-            print(f"[EMAIL] Resend API failed: {r.status_code} {r.text[:200]}")
+            resp_data = r.json() if r.text else {}
+            if r.status_code in (200, 201) and resp_data.get("id"):
+                print(f"[EMAIL] Resend OK: {resp_data.get('id')}")
+                return
+            print(f"[EMAIL] Resend rejected: {r.status_code} {r.text[:200]}")
         except Exception as e:
-            print(f"[EMAIL] Resend API error: {e}")
+            print(f"[EMAIL] Resend error: {e}")
 
     # 方式2: Brevo HTTP API（300封/天免费）
     brevo_key = config.BREVO_API_KEY

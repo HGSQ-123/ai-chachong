@@ -11,7 +11,7 @@
             </h1>
             <p class="hero-subtitle">
                 双重检测 · AI生成率识别 + 全网重复率查重<br>
-                <strong>首次双检测免费 + 加赠5000字</strong> · 充值0.49元/千字
+                <strong>每天1次免费检测</strong> · Pro版 ¥{{ "%.2f"|format(config.PRO_PRICE_PER_K) }}/千字
             </p>
             <div class="hero-actions">
                 <a href="{{ url_for('detect.detect_page') }}" class="btn btn-primary-lg">
@@ -23,8 +23,8 @@
             </div>
             <div class="hero-stats">
                 <div class="stat-item">
-                    <span class="stat-number">首次</span>
-                    <span class="stat-label">检测免费</span>
+                    <span class="stat-number">每天</span>
+                    <span class="stat-label">{{ config.DAILY_FREE_DETECTIONS }}次免费</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-number">双重</span>
@@ -129,46 +129,71 @@
     </div>
 </section>
 
+<!-- ==================== 信任标识 ==================== -->
+<section class="section-padding" style="padding: 40px 0;">
+    <div class="container">
+        <div class="trust-badges">
+            <div class="trust-badge-item">
+                <span class="trust-badge-icon">🔒</span>
+                <span>数据<strong>加密传输</strong></span>
+            </div>
+            <div class="trust-badge-item">
+                <span class="trust-badge-icon">🗑️</span>
+                <span>检测后<strong>自动删除</strong></span>
+            </div>
+            <div class="trust-badge-item">
+                <span class="trust-badge-icon">⚡</span>
+                <span>秒级<strong>快速出报告</strong></span>
+            </div>
+            <div class="trust-badge-item">
+                <span class="trust-badge-icon">💳</span>
+                <span>支付<strong>安全可靠</strong></span>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- ==================== 价格方案 ==================== -->
 <section class="section-padding">
     <div class="container">
         <div class="section-header">
-            <h2 class="section-title">💰 充值额度 · 灵活实惠</h2>
-            <p class="section-desc">0.49元/千字 · 先充值后消费 · 余额永不过期</p>
+            <h2 class="section-title">� 普通版 vs Pro版</h2>
+            <p class="section-desc">按需选择 · 灵活实惠 · 余额永不过期</p>
         </div>
         <div class="pricing-grid">
             <div class="pricing-card">
-                <div class="pricing-badge">🎁 限时赠送</div>
-                <h3>免费体验</h3>
+                <div class="pricing-badge">🆓 免费使用</div>
+                <h3>普通版</h3>
                 <div class="pricing-price">
                     <span class="price">¥0</span>
                 </div>
                 <ul class="pricing-features">
-                    <li>✅ 首次检测免费</li>
+                    <li>✅ 每天 {{ config.DAILY_FREE_DETECTIONS }} 次免费检测</li>
                     <li>✅ AI生成率检测</li>
-                    <li>✅ 全网重复率查重</li>
-                    <li>✅ 详细检测报告</li>
+                    <li>✅ 基础检测报告</li>
                     <li>✅ 支持文件上传</li>
+                    <li>✅ 首次降AI免费</li>
                 </ul>
                 <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline btn-block">免费注册</a>
             </div>
-            <div class="pricing-card">
-                <h3>充值额度</h3>
+            <div class="pricing-card pricing-recommended">
+                <div class="pricing-badge pricing-badge-hot">⭐ 推荐</div>
+                <h3>Pro版</h3>
                 <div class="pricing-price">
-                    <span class="price">¥5</span>
-                    <span class="price-unit">起充</span>
+                    <span class="price">¥{{ "%.2f"|format(config.PRO_PRICE_PER_K) }}</span>
+                    <span class="price-unit">/千字</span>
                 </div>
                 <ul class="pricing-features">
-                    <li>✅ 0.49元/千字超低价</li>
-                    <li>✅ 余额永不过期</li>
-                    <li>✅ 首次降AI仅¥2</li>
-                    <li>✅ 首次降查重仅¥2</li>
-                    <li>✅ ¥5=1万字 / ¥100=30万字</li>
+                    <li>✅ 无限次数检测</li>
+                    <li>✅ AI检测 + 全网查重</li>
+                    <li>✅ 详细报告 + PDF导出</li>
+                    <li>✅ 降低AI率按字数扣除</li>
+                    <li>✅ 余额永久有效</li>
                 </ul>
-                <a href="{{ url_for('user.member_page') }}" class="btn btn-primary btn-block">立即充值</a>
+                <a href="{{ url_for('user.member_page') }}" class="btn btn-gold btn-block">立即充值</a>
             </div>
-            <div class="pricing-card pricing-recommended">
-                <div class="pricing-badge pricing-badge-hot">🔥 推荐</div>
+            <div class="pricing-card">
+                <div class="pricing-badge">👑 尊享</div>
                 <h3>会员月卡</h3>
                 <div class="pricing-price">
                     <span class="price">¥{{ member_monthly_price }}</span>
@@ -176,12 +201,12 @@
                 </div>
                 <ul class="pricing-features">
                     <li>✅ 每月{{ member_monthly_quota }}字额度</li>
-                    <li>✅ 每月免费改写3次</li>
                     <li>✅ AI检测+查重不限次</li>
+                    <li>✅ 每月免费改写3次</li>
                     <li>✅ 报告无限下载打印</li>
                     <li>✅ 优先客服支持</li>
                 </ul>
-                <a href="{{ url_for('user.member_page') }}" class="btn btn-gold btn-block">立即开通</a>
+                <a href="{{ url_for('user.member_page') }}" class="btn btn-primary btn-block">立即开通</a>
             </div>
         </div>
     </div>
@@ -211,7 +236,7 @@
             </details>
             <details class="faq-item">
                 <summary>免费额度用完了怎么办？</summary>
-                <p>首次双检测完全免费+加赠5000字！之后充值额度即可继续使用，0.49元/千字，¥0.49起充。降低AI率与查重率首次各仅需¥2（与检测共享字数）。邀请好友注册双方各送10000字！</p>
+                <p>每天可享受 {{ config.DAILY_FREE_DETECTIONS }} 次免费检测，次日自动重置。如需更多检测，可充值Pro额度（¥{{ "%.2f"|format(config.PRO_PRICE_PER_K) }}/千字），余额永久有效。降低AI率首次免费，之后按字数扣除额度。邀请好友注册双方各享福利！</p>
             </details>
             <details class="faq-item">
                 <summary>支持哪些文件格式？</summary>
@@ -229,7 +254,7 @@
 <section class="cta-section">
     <div class="container cta-content">
         <h2>准备好检测您的论文了吗？</h2>
-        <p>首次双检测免费 · 加赠5000字 · 立即体验！</p>
+        <p>每天免费1次 · Pro版 ¥{{ "%.2f"|format(config.PRO_PRICE_PER_K) }}/千字 · 立即体验！</p>
         <div class="cta-actions">
             <a href="{{ url_for('detect.detect_page') }}" class="btn btn-white-lg">🚀 开始免费检测</a>
             <a href="{{ url_for('auth.register_page') }}" class="btn btn-outline-white-lg">📝 免费注册</a>

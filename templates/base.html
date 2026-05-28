@@ -112,6 +112,9 @@
     <!-- ==================== Toast通知容器 ==================== -->
     <div class="toast-container" id="toastContainer"></div>
 
+    <!-- ==================== 回到顶部 ==================== -->
+    <button class="back-to-top" id="backToTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到顶部">↑</button>
+
     <!-- ==================== 全局脚本 ==================== -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
@@ -121,6 +124,8 @@
     <script>
     (function(){if(localStorage.getItem('dark-mode')==='1'){document.documentElement.classList.add('dark-mode');document.querySelector('.dark-toggle').textContent='☀️';}})();
     function toggleDarkMode(){const isDark=document.documentElement.classList.toggle('dark-mode');document.querySelector('.dark-toggle').textContent=isDark?'☀️':'🌙';localStorage.setItem('dark-mode',isDark?'1':'0');}
+    // 回到顶部按钮
+    (function(){var btn=document.getElementById('backToTop');window.addEventListener('scroll',function(){btn.classList.toggle('visible',window.scrollY>400);});})();
     </script>
 </body>
 </html>

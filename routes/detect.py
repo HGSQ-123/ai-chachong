@@ -143,20 +143,14 @@ def api_detect_text():
 
             # 记录计费日志
             if billing_result:
-                if billing_result["free_used"] > 0:
-                    db.create_billing_record(
-                        user_id=user_id, amount=0,
-                        word_count=billing_result["free_used"],
-                        transaction_type="free_quota",
-                        description=f"使用免费额度检测{billing_result['free_used']}字"
-                    )
-                if billing_result["member_used"] > 0:
-                    db.create_billing_record(
-                        user_id=user_id, amount=0,
-                        word_count=billing_result["member_used"],
-                        transaction_type="member",
-                        description=f"使用会员额度检测{billing_result['member_used']}字"
-                    )
+                mode = billing_result.get("mode", "free")
+                words = word_count if mode == "admin" else word_count
+                if mode == "pro":
+                    db.create_billing_record(user_id=user_id, amount=0, word_count=words,
+                        transaction_type="pro_detect", description=f"Pro版检测{words}字")
+                else:
+                    db.create_billing_record(user_id=user_id, amount=0, word_count=words,
+                        transaction_type="free_detect", description=f"{'管理员' if mode=='admin' else '普通'}版检测{words}字")
 
         return jsonify({
             "success": True,
@@ -304,20 +298,14 @@ def api_detect_file():
             report["record_id"] = record_id
 
             if billing_result:
-                if billing_result["free_used"] > 0:
-                    db.create_billing_record(
-                        user_id=user_id, amount=0,
-                        word_count=billing_result["free_used"],
-                        transaction_type="free_quota",
-                        description=f"文件检测使用免费额度{billing_result['free_used']}字"
-                    )
-                if billing_result["member_used"] > 0:
-                    db.create_billing_record(
-                        user_id=user_id, amount=0,
-                        word_count=billing_result["member_used"],
-                        transaction_type="member",
-                        description=f"文件检测使用会员额度{billing_result['member_used']}字"
-                    )
+                mode = billing_result.get("mode", "free")
+                words = word_count
+                if mode == "pro":
+                    db.create_billing_record(user_id=user_id, amount=0, word_count=words,
+                        transaction_type="pro_detect", description=f"Pro版文件检测{words}字")
+                else:
+                    db.create_billing_record(user_id=user_id, amount=0, word_count=words,
+                        transaction_type="free_detect", description=f"{'管理员' if mode=='admin' else '普通'}版文件检测{words}字")
 
         # 清理临时文件（保护用户隐私）
         try:

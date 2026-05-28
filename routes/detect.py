@@ -68,28 +68,32 @@ def api_detect_text():
 
         # 计费检查
         user_id = session.get("user_id")
+        use_pro = data.get("use_pro", False)
         billing_result = None
+        quota_info = None
 
         if user_id:
             user = db.get_user_by_id(user_id)
             if user:
-                # 计算需要扣除的额度
-                deduct_result = BillingService.deduct_quota(user_id, word_count)
+                quota_info = BillingService.get_available_quota(user)
+                deduct_result = BillingService.deduct_quota(user_id, word_count, use_pro=use_pro)
+
                 if not deduct_result["success"]:
-                    return jsonify({"success": False, "message": deduct_result.get("error", "额度扣除失败")}), 400
+                    if deduct_result.get("need_upgrade"):
+                        return jsonify({
+                            "success": False, "need_upgrade": True,
+                            "message": "今日免费次数已用完，请使用Pro版或明天再来",
+                            "quota_info": quota_info,
+                        }), 402
+                    if deduct_result.get("need_pay"):
+                        return jsonify({
+                            "success": False, "need_pay": True,
+                            "message": f"Pro额度不足，还差{deduct_result['shortage']}字，需充值",
+                            "quota_info": quota_info,
+                        }), 402
+                    return jsonify({"success": False, "message": "额度扣除失败"}), 400
 
                 billing_result = deduct_result
-
-                # 如果有超出额度需要付费
-                if deduct_result["extra_needed"] > 0:
-                    return jsonify({
-                        "success": False,
-                        "need_pay": True,
-                        "message": f"您的免费额度不足，超出{deduct_result['extra_needed']}字需要付费{deduct_result['extra_cost']}元",
-                        "extra_words": deduct_result["extra_needed"],
-                        "extra_cost": deduct_result["extra_cost"],
-                        "quota_info": BillingService.get_available_quota(user),
-                    }), 402  # 402 Payment Required
 
         # 执行检测
         ai_result = None

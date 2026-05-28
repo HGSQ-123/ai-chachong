@@ -290,8 +290,8 @@ async function submitFileDetection() {
 
         if (result.success) {
             renderResult(result.report);
-            showToast('文件检测完成！', 'success');
-        } else if (result.need_pay) {
+            showToast('文件检测完成！', 'success');        } else if (result.need_upgrade) {
+            showUpgradePrompt(result);        } else if (result.need_pay) {
             showPayPrompt(result);
         } else {
             let errMsg = result.message || '文件检测失败';
@@ -335,7 +335,14 @@ function updateProgressBar(pct, message) {
     if (text) text.textContent = pct + '% - ' + message;
 }
 
-// ==================== 付费提示 ====================
+// ==================== 付费/升级提示 ====================
+
+function showUpgradePrompt(data) {
+    var c=document.getElementById('resultContainer');if(!c)return;c.style.display='block';
+    c.innerHTML='<div class="pay-prompt" style="text-align:center;padding:40px"><div style="font-size:48px">🎯</div><h3>今日免费次数已用完</h3><p style="color:#666">普通版每天免费检测1次</p><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:8px;font-size:13px">🔓 普通版</span><div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="btn btn-primary" onclick="switchToPro()">🚀 升级Pro版 (0.49元/千字)</button><a href="/pricing" class="btn btn-gold">💳 充值</a></div></div>';
+    c.scrollIntoView({behavior:'smooth'});
+}
+function switchToPro(){doDetection(true);}
 
 /**
  * 显示付费提示弹窗

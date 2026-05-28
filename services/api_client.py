@@ -260,19 +260,19 @@ class DeepSeekClient:
             (success: bool, result: dict|None, error: str|None)
             result: {"ai_score": float, "human_score": float, "reasoning": str}
         """
-        prompt = f"""请分析以下文本是否由AI生成（如ChatGPT/文心一言/通义千问等大模型撰写）。
+        prompt = f"""你是一个专业的AI内容检测专家。请分析以下文本是否由AI大模型生成。
 
-分析维度：
-1. 句式结构是否过于工整统一
-2. 是否频繁使用AI常用过渡词（如"总而言之""值得注意的是""首先其次最后"等）
-3. 表达是否缺少个人风格和情感色彩
-4. 是否缺乏具体案例和个人经验
-5. 逻辑链条是否过于完美（真人写作通常有思维跳跃）
+详细的评估标准：
+1. 句式多样性：真人写作句式长短不一，AI生成的句式往往过于均匀
+2. 用词习惯：AI常使用"首先/其次/最后"、"值得注意的是"、"综上所述"等机械过渡词
+3. 情感色彩：真人文章通常带有主观情绪和个人风格，AI生成的中性客观
+4. 细节丰富度：真人写作常包含具体数字、案例、个人经历，AI容易泛泛而谈
+5. 逻辑跳跃：真人思维常有跳跃和联想，AI逻辑过于工整线性
+6. 段落结构：AI生成的段落长度往往高度一致
 
-请严格按以下JSON格式回复，不要添加任何其他内容：
-{{"ai_score": 数字(0-100的AI生成概率), "human_score": 数字(0-100的人工撰写概率), "reasoning": "简要分析原因(50字以内)"}}
+请返回JSON：{{"ai_score":0到100的AI生成概率数字,"reasoning":"30字以内分析","details":["具体问题1","具体问题2"]}}
 
-待分析文本：
+文本：
 {text[:8000]}"""
 
         success, content, error = cls.chat(
@@ -301,18 +301,19 @@ class DeepSeekClient:
             (success: bool, result: dict|None, error: str|None)
             result: {"plagiarism_score": float, "original_score": float, "reasoning": str}
         """
-        prompt = f"""请分析以下文本的重复/抄袭风险。
+        prompt = f"""你是一个专业论文查重专家，参考PaperPass的查重标准分析以下文本。
+
+PaperPass原理参考：基于学术文献和网络资源指纹比对，检测连续相似片段，区分合理引用与抄袭拼接。
 
 分析维度：
-1. 是否存在常见的套话模板（如"随着我国经济发展""在当今信息化时代"等高频句式）
-2. 内容是否具有原创性观点
-3. 表述方式是否千篇一律
-4. 是否像是从多个来源拼凑而成
+1. 是否存在"随着...发展""在...背景下""近年来"等高频套路开头
+2. 核心观点是否有独创性，还是常见论点的重新排列
+3. 专业术语使用是否恰当（生硬堆砌 vs 自然融入）
+4. 段落逻辑是否自洽（拼接文章往往段落间逻辑断裂）
 
-请严格按以下JSON格式回复，不要添加任何其他内容：
-{{"plagiarism_score": 数字(0-100的重复率), "original_score": 数字(0-100的原创率), "reasoning": "简要分析(50字以内)"}}
+返回JSON：{{"plagiarism_score":0到100的重复率,"original_score":100减重复率,"reasoning":"30字内分析","risk_level":"低/中/高","suggestions":["建议1","建议2"]}}
 
-待分析文本：
+文本：
 {text[:8000]}"""
 
         success, content, error = cls.chat(

@@ -29,16 +29,19 @@ class Config:
     ALLOWED_EXTENSIONS = {"doc", "docx", "pdf", "txt"}  # 允许上传的文件类型
 
     # ==================== 业务配置 ====================
-    # 新用户免费额度（字数）
-    FREE_QUOTA_WORDS = int(os.getenv("FREE_QUOTA_WORDS", 5000))
-    # 新用户首次检测免费
-    FIRST_DETECTION_FREE = os.getenv("FIRST_DETECTION_FREE", "true").lower() in ("1","true","yes")
+    # 每天免费检测次数（普通版）
+    DAILY_FREE_DETECTIONS = int(os.getenv("DAILY_FREE_DETECTIONS", 1))
+    # Pro版单价（元/千字）
+    PRO_PRICE_PER_K = float(os.getenv("PRO_PRICE_PER_K", 0.49))
+    # 首次降低AI率价格（已取消，改为统一按Pro版计费）
+    REDUCE_AI_FIRST_PRICE = float(os.getenv("REDUCE_AI_FIRST_PRICE", 0))
+    REDUCE_PLAGIARISM_FIRST_PRICE = float(os.getenv("REDUCE_PLAGIARISM_FIRST_PRICE", 0))
+    REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.49))
+    REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 100000))
 
-    # 降低AI率 / 降低查重率 定价
-    REDUCE_AI_FIRST_PRICE = float(os.getenv("REDUCE_AI_FIRST_PRICE", 2.0))         # 首次降低AI率 ¥2
-    REDUCE_PLAGIARISM_FIRST_PRICE = float(os.getenv("REDUCE_PLAGIARISM_FIRST_PRICE", 2.0))  # 首次降查重 ¥2
-    REDUCE_PRICE_PER_K = float(os.getenv("REDUCE_PRICE_PER_K", 0.49))             # 后续0.49元/千字
-    REDUCE_MAX_CHARS = int(os.getenv("REDUCE_MAX_CHARS", 100000))                     # 单次最多100000字
+    # 内部管理员账号（无限额度）
+    ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin888999")
 
     # 单次最大检测字数
     MAX_DETECTION_WORDS = int(os.getenv("MAX_DETECTION_WORDS", 100000))

@@ -9,6 +9,7 @@ import os
 import json
 from datetime import datetime
 from contextlib import contextmanager
+from config import config
 
 # Turso 配置（环境变量优先，留空则本地SQLite；Turso token已过期故不再硬编码）
 TURSO_URL = os.getenv("TURSO_DB_URL", "")
@@ -123,7 +124,24 @@ class DatabaseManager:
                 db_path = os.path.join(db_dir, "detection.db")
             self.db_path = db_path
         self._init_tables()
+        self._ensure_admin()
         self._initialized = True
+
+    def _ensure_admin(self):
+        """确保管理员账号存在（无限额度）"""
+        from werkzeug.security import generate_password_hash
+        try:
+            with self.get_connection() as conn:
+                existing = conn.execute("SELECT id FROM users WHERE username = ?",
+                    (config.ADMIN_USERNAME,)).fetchone()
+                if not existing:
+                    conn.execute(
+                        "INSERT INTO users (username, email, password_hash, credits) VALUES (?, ?, ?, 999999)",
+                        (config.ADMIN_USERNAME, "admin@aichachong.com",
+                         generate_password_hash(config.ADMIN_PASSWORD))
+                    )
+        except Exception:
+            pass
 
     def _make_connection(self):
         """创建数据库连接（Turso或SQLite）"""
@@ -208,11 +226,13 @@ class DatabaseManager:
 
             # 兼容旧表
 
-            # 兼容旧表
+            # 兼容旧表/新增字段
             for col_sql in [
                 "ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",
                 "ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN daily_free_used INTEGER DEFAULT 0",
+                "ALTER TABLE users ADD COLUMN daily_free_date TEXT DEFAULT ''",
                 "ALTER TABLE users ADD COLUMN reduce_ai_count INTEGER DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN reduce_plagiarism_count INTEGER DEFAULT 0",
                 "ALTER TABLE users ADD COLUMN member_rewrite_count INTEGER DEFAULT 0",

@@ -1,386 +1,177 @@
 /**
  * ============================================================
- * AI查重+论文重复率检测系统 - 检测页面交互脚本
- * 功能：文本粘贴检测、文件上传检测、结果渲染
+ * AI查重检测系统 - 检测页面交互脚本 v2
+ * 双模式：普通版(免费) / Pro版(付费)
  * ============================================================
  */
 
-// 当前检测模式（text / file）
-let currentMode = 'text';
-// 当前选中的文件
+let currentMode = 'text';       // text | file
 let selectedFile = null;
+let selectedPlan = 'pro';       // free | pro
+let isDetecting = false;
 
-// ==================== 检测模式切换 ====================
-
-/**
- * 切换检测模式（粘贴文本 / 上传文件）
- * @param {string} mode - 'text' 或 'file'
- */
-function switchDetectMode(mode) {
-    currentMode = mode;
-
-    // 切换Tab高亮
-    document.querySelectorAll('.detect-tab').forEach(t => t.classList.remove('active'));
-    if (mode === 'text') {
-        document.getElementById('tabText').classList.add('active');
-        document.getElementById('textPanel').style.display = 'block';
-        document.getElementById('filePanel').style.display = 'none';
-    } else {
-        document.getElementById('tabFile').classList.add('active');
-        document.getElementById('textPanel').style.display = 'none';
-        document.getElementById('filePanel').style.display = 'block';
-    }
-
-    // 隐藏之前的结果
-    const resultContainer = document.getElementById('resultContainer');
-    if (resultContainer) {
-        resultContainer.style.display = 'none';
-    }
+// ==================== 检测计划切换 ====================
+function selectDetectMode(plan) {
+    selectedPlan = plan;
+    document.getElementById('freeCard').classList.toggle('active', plan === 'free');
+    document.getElementById('proCard').classList.toggle('active', plan === 'pro');
+    document.getElementById('detectHint').innerHTML = plan === 'free'
+        ? '🆓 <strong>普通版</strong>：AI生成率检测 + 基础报告。每日免费1次。'
+        : '⭐ <strong>Pro版</strong>：AI检测 + 全网查重 + 详细报告 + PDF导出。¥0.49/千字。';
 }
 
-// ==================== 文本字数统计 ====================
-
-/**
- * 统计中英文字数
- * @param {string} text - 文本内容
- * @returns {number} 字数
- */
-function countWords(text) {
-    if (!text) return 0;
-    let count = 0;
-    // 中文字符
-    count += (text.match(/[\u4e00-\u9fff]/g) || []).length;
-    // 英文单词
-    count += (text.match(/[a-zA-Z]+/g) || []).length;
-    return count;
+// ==================== 提交检测（文本） ====================
+async function submitFreeDetection() {
+    selectDetectMode('free');
+    await doDetection(false);
+}
+async function submitProDetection() {
+    selectDetectMode('pro');
+    await doDetection(true);
 }
 
-// 监听文本输入，实时更新字数
-const textInput = document.getElementById('textInput');
-if (textInput) {
-    textInput.addEventListener('input', debounce(function () {
-        const count = countWords(this.value);
-        document.getElementById('wordCount').textContent = '字数：' + count;
-    }, 200));
-}
-
-/**
- * 清空文本输入框
- */
-function clearText() {
-    const input = document.getElementById('textInput');
-    if (input) {
-        input.value = '';
-        document.getElementById('wordCount').textContent = '字数：0';
-    }
-    const resultContainer = document.getElementById('resultContainer');
-    if (resultContainer) {
-        resultContainer.style.display = 'none';
-    }
-}
-
-// ==================== 文件上传处理 ====================
-
-/**
- * 处理文件选择
- * @param {Event} event - 文件选择事件
- */
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    processSelectedFile(file);
-}
-
-/**
- * 处理拖拽事件
- */
-function handleDragOver(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('uploadArea').classList.add('drag-over');
-}
-
-function handleDragLeave(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('uploadArea').classList.remove('drag-over');
-}
-
-function handleDrop(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    document.getElementById('uploadArea').classList.remove('drag-over');
-
-    const file = event.dataTransfer.files[0];
-    if (file) {
-        processSelectedFile(file);
-    }
-}
-
-/**
- * 处理选中的文件
- * @param {File} file - 文件对象
- */
-function processSelectedFile(file) {
-    // 验证文件类型
-    const allowedExts = ['docx', 'pdf', 'txt', 'doc'];
-    const ext = file.name.split('.').pop().toLowerCase();
-    if (!allowedExts.includes(ext)) {
-        showToast('不支持的文件格式，请上传 .docx / .pdf / .txt 文件', 'error');
-        return;
-    }
-
-    // 验证文件大小（20MB）
-    const maxSize = 20 * 1024 * 1024;
-    if (file.size > maxSize) {
-        showToast('文件大小超过20MB限制', 'error');
-        return;
-    }
-
-    selectedFile = file;
-
-    // 显示文件信息
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = formatFileSize(file.size);
-    document.getElementById('fileInfo').style.display = 'inline-flex';
-    document.getElementById('btnSubmitFile').disabled = false;
-}
-
-/**
- * 清除已选文件
- * @param {Event} event - 点击事件
- */
-function clearFile(event) {
-    if (event) event.stopPropagation();
-    selectedFile = null;
-    document.getElementById('fileInput').value = '';
-    document.getElementById('fileInfo').style.display = 'none';
-    document.getElementById('btnSubmitFile').disabled = true;
-}
-
-/**
- * 格式化文件大小
- * @param {number} bytes - 字节数
- * @returns {string} 格式化后的大小
- */
-function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-// ==================== 提交检测 ====================
-
-/**
- * 提交文本检测
- */
-async function submitTextDetection() {
+async function doDetection(usePro) {
+    if (isDetecting) return;
     const text = document.getElementById('textInput').value.trim();
-
-    // 空文本检查
-    if (!text) {
-        showToast('请先输入要检测的文本内容', 'warning');
-        return;
-    }
-
-    // 字数检查
+    if (!text) { showToast('请先输入要检测的文本内容', 'warning'); return; }
     const wordCount = countWords(text);
-    if (wordCount < 10) {
-        showToast('文本过短（不足10字），无法进行有效检测', 'warning');
-        return;
-    }
+    if (wordCount < 10) { showToast('文本过短（不足10字）', 'warning'); return; }
+    if (wordCount > 50000) { showToast('单次最多50000字', 'warning'); return; }
 
-    const maxWords = 50000;
-    if (wordCount > maxWords) {
-        showToast('单次检测最多支持' + maxWords + '字，当前' + wordCount + '字', 'warning');
-        return;
-    }
-
-    // 获取检测模式
-    const detectMode = document.getElementById('detectMode').value;
-
-    // 显示加载动画
-    showLoading('正在检测中，AI分析+查重比对进行中...');
-    const btn = document.getElementById('btnSubmitText');
-    btn.disabled = true;
-    btn.textContent = '⏳ 检测中...';
+    isDetecting = true;
+    const label = usePro ? 'Pro检测中...' : '免费检测中...';
+    showLoading(label, usePro ? 'AI分析 + 查重比对' : 'AI分析中');
+    const btn = usePro ? document.getElementById('btnPro') : document.getElementById('btnFree');
+    btn.disabled = true; btn.textContent = '⏳ ' + label;
 
     try {
         const result = await apiRequest('/detect/api/text', {
             method: 'POST',
-            body: JSON.stringify({ text: text, mode: detectMode }),
-        }, 60000); // 60秒超时
+            body: JSON.stringify({ text, mode: usePro ? 'both' : 'ai_only', use_pro: usePro }),
+        }, 60000);
 
         if (result.success) {
-            // 渲染结果
             renderResult(result.report);
-            showToast('检测完成！', 'success');
+            showToast(usePro ? 'Pro检测完成！' : '免费检测完成！', 'success');
+        } else if (result.need_upgrade) {
+            showUpgradePrompt(result);
         } else if (result.need_pay) {
-            // 需要付费
             showPayPrompt(result);
         } else {
             showToast(result.message || '检测失败', 'error');
         }
     } catch (e) {
-        showToast('检测请求异常：' + e.message, 'error');
+        showToast('检测异常：' + e.message, 'error');
     } finally {
-        hideLoading();
+        isDetecting = false; hideLoading();
         btn.disabled = false;
-        btn.textContent = '🔍 开始检测';
+        btn.textContent = usePro ? '⭐ Pro检测 · ¥0.49/千字' : '🆓 免费检测';
     }
 }
 
-/**
- * 提交文件检测
- */
-async function submitFileDetection() {
-    if (!selectedFile) {
-        showToast('请先选择要上传的文件', 'warning');
-        return;
-    }
+// ==================== 旧的文本检测（保留兼容） ====================
+async function submitTextDetection() {
+    await doDetection(selectedPlan === 'pro');
+}
 
-    // 显示带进度条的加载动画
-    showLoadingWithProgress('正在上传文件...');
+// ==================== 模式切换（文本/文件） ====================
+function switchDetectMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.detect-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(mode === 'text' ? 'tabText' : 'tabFile').classList.add('active');
+    document.getElementById('textPanel').style.display = mode === 'text' ? 'block' : 'none';
+    document.getElementById('filePanel').style.display = mode === 'file' ? 'block' : 'none';
+    const rc = document.getElementById('resultContainer'); if (rc) rc.style.display = 'none';
+}
 
-    const btn = document.getElementById('btnSubmitFile');
-    btn.disabled = true;
-    btn.textContent = '⏳ 检测中...';
+// ==================== 字数统计 ====================
+function countWords(text) {
+    if (!text) return 0;
+    let count = 0;
+    count += (text.match(/[\u4e00-\u9fff]/g) || []).length;
+    count += (text.match(/[a-zA-Z]+/g) || []).length;
+    return count;
+}
+(function(){
+    var ti = document.getElementById('textInput');
+    if (ti) ti.addEventListener('input', function(){ document.getElementById('wordCount').textContent = '字数：' + countWords(this.value); });
+})();
+
+// ==================== 文件上传处理 ====================
+function handleFileSelect(e) { var f = e.target.files[0]; if(f) processSelectedFile(f); }
+function handleDragOver(e) { e.preventDefault(); document.getElementById('uploadArea').classList.add('drag-over'); }
+function handleDragLeave(e) { e.preventDefault(); document.getElementById('uploadArea').classList.remove('drag-over'); }
+function handleDrop(e) { e.preventDefault(); document.getElementById('uploadArea').classList.remove('drag-over'); var f = e.dataTransfer.files[0]; if(f) processSelectedFile(f); }
+function processSelectedFile(file) {
+    var allowed = ['docx','pdf','txt','doc']; var ext = file.name.split('.').pop().toLowerCase();
+    if (!allowed.includes(ext)) { showToast('不支持的文件格式', 'error'); return; }
+    if (file.size > 20*1024*1024) { showToast('文件超过20MB', 'error'); return; }
+    selectedFile = file;
+    document.getElementById('fileName').textContent = file.name;
+    document.getElementById('fileSize').textContent = formatFileSize(file.size);
+    document.getElementById('fileInfo').style.display = 'inline-flex';
+    document.getElementById('btnProFile').disabled = false;
+}
+function clearFile(e) { if(e) e.stopPropagation(); selectedFile = null; document.getElementById('fileInput').value = ''; document.getElementById('fileInfo').style.display = 'none'; document.getElementById('btnProFile').disabled = true; }
+function formatFileSize(b) { return b<1024?b+' B':b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(1)+' MB'; }
+
+// ==================== 文件检测提交 ====================
+async function submitFileFreeDetection() { selectDetectMode('free'); await submitFileDetection(false); }
+async function submitFileProDetection() { selectDetectMode('pro'); await submitFileDetection(true); }
+async function submitFileDetection(usePro) {
+    if (!selectedFile) { showToast('请先选择文件', 'warning'); return; }
+
+    var label = usePro ? 'Pro检测中...' : '免费检测中...';
+    showLoading(label, usePro ? '文件解析 + AI分析 + 查重' : '文件解析 + AI分析');
+    var btn = usePro ? document.getElementById('btnProFile') : document.getElementById('btnFreeFile');
+    btn.disabled = true; btn.textContent = '⏳ ' + label;
 
     try {
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-
-        const xhr = new XMLHttpRequest();
-        
-        // 上传进度回调
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const pct = Math.round((e.loaded / e.total) * 35);
-                updateProgressBar(pct, '上传中...');
-            }
-        });
-
-        // 等待XHR完成
-        const result = await new Promise((resolve, reject) => {
-            xhr.addEventListener('load', () => {
-                if (xhr.status === 401) {
-                    window.location.href = '/auth/login';
-                    reject(new Error('请先登录'));
-                    return;
-                }
-                try { resolve(JSON.parse(xhr.responseText)); }
-                catch (e) { reject(new Error('解析失败')); }
+        var fd = new FormData(); fd.append('file', selectedFile);
+        fd.append('use_pro', usePro ? '1' : '0');
+        var xhr = new XMLHttpRequest();
+        var result = await new Promise(function(resolve, reject) {
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 401) { window.location.href = '/auth/login'; reject(new Error('请先登录')); return; }
+                try { resolve(JSON.parse(xhr.responseText)); } catch(e) { reject(new Error('解析失败')); }
             });
-            xhr.addEventListener('error', () => reject(new Error('网络异常')));
+            xhr.addEventListener('error', function() { reject(new Error('网络异常')); });
             xhr.open('POST', '/detect/api/file');
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            
-            // 上传完成后的模拟进度
-            xhr.upload.addEventListener('loadend', () => {
-                updateProgressBar(50, '正在解析文档...');
-                setTimeout(() => updateProgressBar(70, 'AI检测分析中...'), 800);
-                setTimeout(() => updateProgressBar(85, '查重比对中...'), 1800);
-                setTimeout(() => updateProgressBar(98, '生成报告中...'), 3000);
-            });
-            
-            xhr.send(formData);
+            xhr.send(fd);
         });
-
-        updateProgressBar(100, '完成！');
-
-        if (result.success) {
-            renderResult(result.report);
-            showToast('文件检测完成！', 'success');        } else if (result.need_upgrade) {
-            showUpgradePrompt(result);        } else if (result.need_pay) {
-            showPayPrompt(result);
-        } else {
-            let errMsg = result.message || '文件检测失败';
-            if (result.file_type === 'pdf') {
-                errMsg += '\n\n💡 如果是扫描版PDF，请用WPS打开后「另存为」标准PDF再上传';
-            }
-            showToast(errMsg, 'error');
-        }
-    } catch (error) {
-        showToast('文件检测异常：' + error.message, 'error');
-    } finally {
-        hideLoading();
-        btn.disabled = false;
-        btn.textContent = '🔍 上传并检测';
-    }
+        if (result.success) { renderResult(result.report); showToast(usePro ? 'Pro检测完成！' : '免费检测完成！', 'success'); }
+        else if (result.need_upgrade) { showUpgradePrompt(result); }
+        else if (result.need_pay) { showPayPrompt(result); }
+        else { showToast(result.message || '检测失败', 'error'); }
+    } catch(e) { showToast('检测异常：' + e.message, 'error'); }
+    finally { hideLoading(); btn.disabled = false; btn.textContent = usePro ? '⭐ Pro检测 · ¥0.49/千字' : '🆓 免费检测'; }
 }
 
-// ==================== 进度条工具函数 ====================
-
-function showLoadingWithProgress(message) {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.innerHTML = `
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p class="loading-text">${message}</p>
-                <div style="width:280px; height:6px; background:#e5e7eb; border-radius:3px; margin:12px auto; overflow:hidden;">
-                    <div id="progressBarFill" style="width:0%; height:100%; background:linear-gradient(90deg, #2563eb, #7c3aed); border-radius:3px; transition: width 0.4s ease;"></div>
-                </div>
-                <p class="loading-subtext" id="progressBarText">0%</p>
-            </div>
-        `;
-        overlay.style.display = 'flex';
-    }
-}
-
-function updateProgressBar(pct, message) {
-    const bar = document.getElementById('progressBarFill');
-    const text = document.getElementById('progressBarText');
-    if (bar) bar.style.width = pct + '%';
-    if (text) text.textContent = pct + '% - ' + message;
-}
-
-// ==================== 付费/升级提示 ====================
-
+// ==================== 升级/付费提示 ====================
 function showUpgradePrompt(data) {
-    var c=document.getElementById('resultContainer');if(!c)return;c.style.display='block';
-    c.innerHTML='<div class="pay-prompt" style="text-align:center;padding:40px"><div style="font-size:48px">🎯</div><h3>今日免费次数已用完</h3><p style="color:#666">普通版每天免费检测1次</p><span style="background:#fef3c7;color:#92400e;padding:4px 12px;border-radius:8px;font-size:13px">🔓 普通版</span><div style="margin-top:16px;display:flex;gap:12px;justify-content:center"><button class="btn btn-primary" onclick="switchToPro()">🚀 升级Pro版 (0.49元/千字)</button><a href="/pricing" class="btn btn-gold">💳 充值</a></div></div>';
-    c.scrollIntoView({behavior:'smooth'});
+    var c = document.getElementById('resultContainer'); if (!c) return; c.style.display = 'block';
+    c.innerHTML = '<div class="prompt-card"><div style="font-size:56px">🎯</div><h3>今日免费次数已用完</h3><p style="color:#666">普通版每天' + (data.daily_free || '1') + '次免费检测</p><div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><button class="btn-detect-pro" onclick="selectDetectMode(\'pro\');doDetection(true);">⭐ 立即使用Pro版 · ¥0.49/千字</button><a href="/pricing" class="btn btn-gold">💳 去充值</a></div></div>';
+    c.scrollIntoView({ behavior: 'smooth' });
 }
-function switchToPro(){doDetection(true);}
 
-/**
- * 显示付费提示弹窗
- * @param {Object} data - 付费信息 { extra_words, extra_cost, quota_info }
- */
 function showPayPrompt(data) {
-    const container = document.getElementById('resultContainer');
-    if (!container) return;
-
-    container.style.display = 'block';
-    const qi = data.quota_info || {};
-    container.innerHTML = `
-        <div class="pay-prompt" style="text-align:center; padding:40px; background:white; border:1px solid var(--border); border-radius:16px;">
-            <div style="font-size:48px; margin-bottom:16px;">💰</div>
-            <h3 style="margin-bottom:12px;">额度不足</h3>
-            <p style="color:var(--text-secondary); margin-bottom:8px;">
-                本次检测共超出 <strong style="color:var(--danger);">${data.extra_words}字</strong>
-            </p>
-            <p style="color:var(--text-secondary); margin-bottom:24px;">
-                需要付费 <strong style="font-size:24px; color:var(--primary);">¥${data.extra_cost}</strong>
-            </p>
-            <div style="margin-bottom:20px; padding:12px; background:var(--bg-secondary); border-radius:8px; display:inline-block; text-align:left;">
-                <p style="font-size:13px; color:var(--text-muted); margin:0;">
-                    🎁 免费额度剩余：${qi.free_remaining || 0}字 | 💳 充值余额：${qi.credits || 0}字
-                    ${qi.is_member ? ' | 👑 会员额度：' + (qi.member_remaining || 0) + '字' : ''}
-                </p>
-            </div>
-            <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
-                <a href="/pricing" class="btn btn-primary" style="font-size:15px;padding:10px 24px;">💳 去充值（0.49元/千字）</a>
-                <a href="/user/member" class="btn btn-gold" style="font-size:15px;padding:10px 24px;">👑 开通会员</a>
-                <button class="btn btn-outline" onclick="this.closest('.pay-prompt').parentElement.style.display='none'">暂不处理</button>
-            </div>
-        </div>
-    `;
-
-    // 滚动到结果区域
-    container.scrollIntoView({ behavior: 'smooth' });
+    var c = document.getElementById('resultContainer'); if (!c) return;
+    c.style.display = 'block';
+    c.innerHTML = '<div class="prompt-card"><div style="font-size:56px">💰</div><h3>Pro额度不足</h3><p style="color:#666">本次检测超出 <strong style="color:#ef4444">' + (data.shortage || data.extra_words || 0) + '字</strong></p><p style="color:#666">需充值约 <strong style="font-size:24px;color:#d97706">¥' + (data.cost || data.extra_cost || 0) + '</strong></p><div style="margin-top:20px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap"><a href="/pricing" class="btn-detect-pro">💳 充值Pro额度</a><a href="/user/member" class="btn btn-gold">👑 开通会员</a></div></div>';
+    c.scrollIntoView({ behavior: 'smooth' });
 }
+
+// ==================== 加载动画 ====================
+function showLoading(text, sub) {
+    var ov = document.getElementById('loadingOverlay'); if (ov) { ov.style.display = 'flex'; }
+    var lt = document.querySelector('.loading-text'); if (lt) lt.textContent = text || '正在检测中...';
+    var ls = document.getElementById('loadingSubtext'); if (ls) ls.textContent = sub || '';
+}
+function hideLoading() { var ov = document.getElementById('loadingOverlay'); if (ov) ov.style.display = 'none'; }
+
+// ==================== HTML转义 ====================
+function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 // ==================== 结果渲染 ====================
 

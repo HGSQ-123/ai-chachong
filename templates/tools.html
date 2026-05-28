@@ -34,18 +34,42 @@
             <p>智能识别重复内容，在保留原意的前提下进行同义替换和句式重组，有效降低论文重复率。</p>
         </div>
 
+        <!-- ==================== 输入方式切换 ==================== -->
+        <div class="detect-tabs">
+            <button class="detect-tab active" onclick="switchToolMode('text')" id="toolTabText">✏️ 粘贴文本</button>
+            <button class="detect-tab" onclick="switchToolMode('file')" id="toolTabFile">📁 上传文件</button>
+        </div>
+
         <!-- ==================== 输入输出区 ==================== -->
         <div class="tool-workspace">
             <div class="tool-input-area">
-                <label>📝 输入原文</label>
-                <textarea id="toolInput" class="form-textarea"
-                    placeholder="在此粘贴需要处理的文本...&#10;&#10;支持中英文内容，AI将自动识别并优化"
-                    rows="10" maxlength="100000"></textarea>
-                <div class="textarea-footer">
-                    <span class="word-count" id="toolWordCount">字数：0</span>
-                    <span class="text-limit">单次最多100000字 | 首次免费 后续0.49元/千字</span>
+                <!-- 文本粘贴 -->
+                <div id="toolTextPanel">
+                    <label>📝 输入原文</label>
+                    <textarea id="toolInput" class="form-textarea"
+                        placeholder="在此粘贴需要处理的文本...&#10;&#10;支持中英文内容，AI将自动识别并优化"
+                        rows="10" maxlength="100000"></textarea>
+                    <div class="textarea-footer">
+                        <span class="word-count" id="toolWordCount">字数：0</span>
+                        <span class="text-limit">单次最多100000字 | 首次免费 后续0.49元/千字</span>
+                    </div>
                 </div>
-                <button class="btn btn-primary btn-block" onclick="executeTool()" id="btnExecute">
+                <!-- 文件上传 -->
+                <div id="toolFilePanel" style="display:none;">
+                    <div class="upload-area" id="toolUploadArea"
+                         onclick="document.getElementById('toolFileInput').click()">
+                        <div class="upload-icon">📁</div>
+                        <h3>点击选择或拖拽文件</h3>
+                        <p>.docx / .pdf / .txt，最大20MB</p>
+                        <input type="file" id="toolFileInput" accept=".docx,.pdf,.txt,.doc" onchange="handleToolFileSelect(event)" style="display:none;">
+                        <div class="upload-file-info" id="toolFileInfo" style="display:none;">
+                            <span class="file-name" id="toolFileName"></span>
+                            <span class="file-size" id="toolFileSize"></span>
+                            <button class="btn btn-text-sm" onclick="clearToolFile(event)">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" onclick="executeTool()" id="btnExecute" style="margin-top:16px;">
                     🔄 开始处理
                 </button>
             </div>
@@ -58,7 +82,7 @@
                     </div>
                 </div>
                 <div class="tool-suggestions" id="toolSuggestions" style="display:none;"></div>
-                <button class="btn btn-outline btn-block" onclick="copyResult()" id="btnCopy" style="display:none;">
+                <button class="btn btn-outline btn-block" onclick="copyResult()" id="btnCopy" style="display:none;margin-top:8px;">
                     📋 复制结果
                 </button>
             </div>
@@ -75,9 +99,21 @@
 {% block extra_js %}
 <script>
 let currentTool = 'rewrite';
+let toolMode = 'text';
+let toolFile = null;
+
+// 拖拽支持
+(function(){
+    var ua = document.getElementById('toolUploadArea');
+    if (ua) {
+        ua.addEventListener('dragover', function(e) { e.preventDefault(); ua.classList.add('drag-over'); });
+        ua.addEventListener('dragleave', function(e) { e.preventDefault(); ua.classList.remove('drag-over'); });
+        ua.addEventListener('drop', function(e) { e.preventDefault(); ua.classList.remove('drag-over'); var f = e.dataTransfer.files[0]; if (f) handleToolFile(f); });
+    }
+})();
 
 const toolInfo = {
-    rewrite: { title: '🔄 AI降重改写', desc: '智能识别重复内容，在不改变原意的前提下进行同义替换、句式重组和表达优化，有效降低论文重复率。' },
+    rewrite: { title: '🔄 AI降重改写', desc: '智能识别重复内容，在保留原意的前提下进行同义替换和句式重组，有效降低论文重复率。' },
     polish: { title: '✨ 语句润色', desc: '优化词语搭配和语句流畅度，提升文本的专业性和可读性，让表达更加自然优美。' },
     fix: { title: '🩺 语病修正', desc: '自动检查并修正常见语病，包括语法错误、搭配不当、逻辑混乱等问题。' },
     optimize: { title: '📐 句式优化', desc: '优化句式结构，拆分过长句子，提升句式多样性，增强表达效果。' },
@@ -87,55 +123,97 @@ function switchTool(tool) {
     currentTool = tool;
     document.querySelectorAll('.tool-tab').forEach(t => t.classList.remove('active'));
     document.getElementById('tab' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('active');
-    document.getElementById('toolDescription').innerHTML = `<h3>${toolInfo[tool].title}</h3><p>${toolInfo[tool].desc}</p>`;
+    document.getElementById('toolDescription').innerHTML = '<h3>' + toolInfo[tool].title + '</h3><p>' + toolInfo[tool].desc + '</p>';
     document.getElementById('toolOutput').innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>处理结果将显示在这里</p></div>';
     document.getElementById('toolSuggestions').style.display = 'none';
     document.getElementById('btnCopy').style.display = 'none';
 }
 
+function switchToolMode(mode) {
+    toolMode = mode;
+    document.getElementById('toolTabText').classList.toggle('active', mode === 'text');
+    document.getElementById('toolTabFile').classList.toggle('active', mode === 'file');
+    document.getElementById('toolTextPanel').style.display = mode === 'text' ? 'block' : 'none';
+    document.getElementById('toolFilePanel').style.display = mode === 'file' ? 'block' : 'none';
+    document.getElementById('toolOutput').innerHTML = '<div class="empty-state"><div class="empty-icon">✨</div><p>处理结果将显示在这里</p></div>';
+    document.getElementById('toolSuggestions').style.display = 'none';
+    document.getElementById('btnCopy').style.display = 'none';
+}
+
+function handleToolFileSelect(e) { var f = e.target.files[0]; if (f) handleToolFile(f); }
+function handleToolFile(file) {
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (!['docx','pdf','txt','doc'].includes(ext)) { showToast('不支持的文件格式', 'error'); return; }
+    if (file.size > 20*1024*1024) { showToast('文件超过20MB', 'error'); return; }
+    toolFile = file;
+    document.getElementById('toolFileName').textContent = file.name;
+    document.getElementById('toolFileSize').textContent = (file.size<1048576?(file.size/1024).toFixed(1)+' KB':(file.size/1048576).toFixed(1)+' MB');
+    document.getElementById('toolFileInfo').style.display = 'inline-flex';
+}
+function clearToolFile(e) { if (e) e.stopPropagation(); toolFile = null; document.getElementById('toolFileInput').value = ''; document.getElementById('toolFileInfo').style.display = 'none'; }
+
 document.getElementById('toolInput').addEventListener('input', function() {
-    const text = this.value;
-    let count = 0;
+    var text = this.value;
+    var count = 0;
     count += (text.match(/[\u4e00-\u9fff]/g) || []).length;
     count += (text.match(/[a-zA-Z]+/g) || []).length;
     document.getElementById('toolWordCount').textContent = '字数：' + count;
 });
 
 async function executeTool() {
-    const text = document.getElementById('toolInput').value.trim();
-    if (!text) {
-        showToast('请先输入要处理的文本', 'warning');
-        return;
-    }
-    const btn = document.getElementById('btnExecute'), output = document.getElementById('toolOutput');
+    var btn = document.getElementById('btnExecute'), output = document.getElementById('toolOutput');
     btn.disabled = true; btn.textContent = '⏳ 提交中...';
 
     try {
-        const resp = await fetch('{{ url_for("user.api_ai_rewrite") }}', {
-            method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ text: text, action: currentTool }),
-        });
-        const data = await resp.json();
+        var resp, data;
+
+        if (toolMode === 'file') {
+            if (!toolFile) { showToast('请先选择文件', 'warning'); btn.disabled = false; btn.textContent = '🔄 开始处理'; return; }
+            output.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>正在上传解析文件...</p></div>';
+            var fd = new FormData(); fd.append('file', toolFile); fd.append('action', currentTool);
+            var xhrResult = await new Promise(function(resolve, reject) {
+                var xhr = new XMLHttpRequest();
+                xhr.addEventListener('load', function() {
+                    if (xhr.status === 401) { window.location.href = '/auth/login'; reject(new Error('请先登录')); return; }
+                    try { resolve(JSON.parse(xhr.responseText)); } catch(e) { reject(new Error('解析失败')); }
+                });
+                xhr.addEventListener('error', function() { reject(new Error('网络异常')); });
+                xhr.open('POST', '/user/api/ai-rewrite-file');
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                xhr.send(fd);
+            });
+            data = xhrResult;
+        } else {
+            var text = document.getElementById('toolInput').value.trim();
+            if (!text) { showToast('请先输入要处理的文本', 'warning'); btn.disabled = false; btn.textContent = '🔄 开始处理'; return; }
+            resp = await fetch('{{ url_for("user.api_ai_rewrite") }}', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ text: text, action: currentTool }),
+            });
+            data = await resp.json();
+        }
+
         if (!data.success) { showToast(data.message, 'error'); btn.disabled = false; btn.textContent = '🔄 开始处理'; return; }
-        
+
         // 异步轮询
-        const taskId = data.task_id;
-        output.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>改写进行中... 已完成 <span id="taskProgress">10%</span></p><p style="font-size:12px;color:var(--text-muted);">您可以在网站中继续操作，稍后回来查看结果</p></div>';
-        
-        const poll = setInterval(async () => {
+        var taskId = data.task_id;
+        output.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>改写进行中... 已完成 <span id="taskProgress">10%</span></p><p style="font-size:12px;color:var(--text-muted);">处理完成后自动显示结果</p></div>';
+        var poll = setInterval(async function() {
             try {
-                const r = await fetch('/user/api/task-status/' + taskId);
-                const d = await r.json();
+                var r = await fetch('/user/api/task-status/' + taskId);
+                var d = await r.json();
                 if (d.success && d.task) {
-                    const t = d.task;
+                    var t = d.task;
                     document.getElementById('taskProgress').textContent = t.progress + '%';
                     if (t.status === 'done' && t.result) {
                         clearInterval(poll);
-                        const res = t.result;
-                        output.innerHTML = `<div class="result-text">${escapeHtml(res.result_text)}</div>`;
+                        var res = t.result;
+                        output.innerHTML = '<div class="result-text">' + escapeHtml(res.result_text) + '</div>';
                         if (res.billing) showToast((res.billing.label||'完成') + '!', 'success');
                         else showToast('处理完成！', 'success');
-                        if (res.suggestions) document.getElementById('toolSuggestions').innerHTML = '<h4>💡 建议</h4><ul>'+res.suggestions.map(s=>`<li>${s}</li>`).join('')+'</ul>';
+                        if (res.suggestions) {
+                            document.getElementById('toolSuggestions').innerHTML = '<h4>💡 建议</h4><ul>' + res.suggestions.map(function(s){return '<li>'+s+'</li>';}).join('') + '</ul>';
+                        }
                         document.getElementById('toolSuggestions').style.display = 'block';
                         document.getElementById('btnCopy').style.display = 'block';
                         btn.disabled = false; btn.textContent = '🔄 开始处理';
@@ -143,9 +221,10 @@ async function executeTool() {
                 }
             } catch(e) {}
         }, 1500);
-        setTimeout(() => clearInterval(poll), 120000); // 2分钟超时
+        setTimeout(function() { clearInterval(poll); }, 120000);
     } catch (e) {
-        showToast('网络异常', 'error'); btn.disabled = false; btn.textContent = '🔄 开始处理';
+        showToast('处理异常：' + e.message, 'error');
+        btn.disabled = false; btn.textContent = '🔄 开始处理';
     }
 }
 

@@ -395,6 +395,85 @@ def api_ai_rewrite():
         return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
 
 
+@user_bp.route("/api/ai-rewrite-file", methods=["POST"])
+def api_ai_rewrite_file():
+    """AI改写接口（文件上传版）"""
+    try:
+        if "file" not in request.files:
+            return jsonify({"success": False, "message": "请选择文件"}), 400
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"success": False, "message": "请选择文件"}), 400
+        action = request.form.get("action", "rewrite")
+
+        from services.file_parser import FileParser
+        import os, tempfile, uuid
+
+        ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if ext not in ("docx", "pdf", "txt", "doc"):
+            return jsonify({"success": False, "message": "不支持的文件格式"}), 400
+
+        # 保存临时文件
+        tmpdir = tempfile.gettempdir()
+        tmpname = f"rewrite_{uuid.uuid4().hex[:8]}_{file.filename}"
+        tmppath = os.path.join(tmpdir, tmpname)
+        file.save(tmppath)
+
+        parse_result = FileParser.parse(tmppath, file.filename)
+        try:
+            os.remove(tmppath)
+        except OSError:
+            pass
+
+        if not parse_result["success"]:
+            return jsonify({"success": False, "message": parse_result["error"]}), 400
+
+        text = parse_result["text"]
+        if len(text) < 10:
+            return jsonify({"success": False, "message": "文档内容过短"}), 400
+        if len(text) > config.REDUCE_MAX_CHARS:
+            return jsonify({"success": False, "message": f"单次最多{config.REDUCE_MAX_CHARS}字符"}), 400
+
+        # 计费
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"success": False, "message": "请先登录", "need_login": True}), 401
+
+        user = db.get_user_by_id(user_id)
+        billing_info = _calc_rewrite_cost(user, len(text))
+        if billing_info["type"] == "insufficient":
+            return jsonify(billing_info), 402
+
+        # 异步改写
+        import threading
+        task_id = uuid.uuid4().hex[:8]
+        from services.task_manager import task_manager
+        task_manager.create_task(task_id)
+        task_manager.update_task(task_id, status="processing", progress=10, message="文件解析完成，开始改写...")
+
+        def run_rewrite():
+            from services.api_client import DeepSeekClient
+            if DeepSeekClient.is_configured():
+                success, rt, suggs, err = DeepSeekClient.rewrite(text, action)
+                if success:
+                    _apply_rewrite_billing(user_id, billing_info, text, rt, action, 'deepseek')
+                    task_manager.update_task(task_id, status="done", progress=100,
+                        result={"success": True, "result_text": rt, "suggestions": suggs,
+                                "action": action, "method": "deepseek", "billing": billing_info})
+                    return
+            rt, suggs = _simulate_ai_rewrite(text, action)
+            _apply_rewrite_billing(user_id, billing_info, text, rt, action, 'simulation')
+            task_manager.update_task(task_id, status="done", progress=100,
+                result={"success": True, "result_text": rt, "suggestions": suggs,
+                        "action": action, "method": "simulation", "billing": billing_info})
+
+        threading.Thread(target=run_rewrite, daemon=True).start()
+        return jsonify({"success": True, "task_id": task_id, "message": "文件已解析，改写进行中..."})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": f"处理失败：{str(e)}"}), 500
+
+
 def _calc_rewrite_cost(user: dict, char_count: int) -> dict:
     """计算改写费用"""
     from datetime import datetime

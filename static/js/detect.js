@@ -173,195 +173,75 @@ function hideLoading() { var ov = document.getElementById('loadingOverlay'); if 
 // ==================== HTML转义 ====================
 function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-// ==================== 结果渲染 ====================
-
-/**
- * 渲染检测结果
- * @param {Object} report - 检测报告数据
- */
+// ==================== 结果渲染（精简版） ====================
 function renderResult(report) {
-    const container = document.getElementById('resultContainer');
-    if (!container) return;
+    var c = document.getElementById('resultContainer'); if (!c) return;
+    var score = report.originality_score;
+    var gradeText, gradeColor;
+    if (score >= 80) { gradeText = '🟢 优秀 · 原创度高'; gradeColor = '#059669'; }
+    else if (score >= 60) { gradeText = '🟡 良好 · 建议优化'; gradeColor = '#d97706'; }
+    else if (score >= 40) { gradeText = '🟠 一般 · 需深度修改'; gradeColor = '#ea580c'; }
+    else { gradeText = '🔴 较低 · 需大幅修改'; gradeColor = '#dc2626'; }
 
-    // 确定评分等级
-    let gradeText = '';
-    let gradeColor = '';
-    const score = report.originality_score;
-    if (score >= 80) {
-        gradeText = '🟢 优秀 - 原创度较高';
-        gradeColor = '#10b981';
-    } else if (score >= 60) {
-        gradeText = '🟡 良好 - 建议优化部分内容';
-        gradeColor = '#f59e0b';
-    } else if (score >= 40) {
-        gradeText = '🟠 一般 - 建议深度修改';
-        gradeColor = '#f97316';
-    } else {
-        gradeText = '🔴 较低 - 需要大幅修改';
-        gradeColor = '#ef4444';
-    }
+    var aiColor = report.ai_score > 50 ? '#dc2626' : report.ai_score > 30 ? '#d97706' : '#059669';
+    var plagColor = report.plagiarism_score > 50 ? '#dc2626' : report.plagiarism_score > 30 ? '#d97706' : '#059669';
 
-    // AI得分颜色
-    const aiColor = report.ai_score > 50 ? '#ef4444' : report.ai_score > 30 ? '#f59e0b' : '#10b981';
-    const plagColor = report.plagiarism_score > 50 ? '#ef4444' : report.plagiarism_score > 30 ? '#f59e0b' : '#10b981';
-
-    // 构建AI详情
-    let aiDetailsHtml = '';
-    if (report.ai_details && report.ai_details.length > 0) {
-        aiDetailsHtml = '<div class="score-details">' +
-            report.ai_details.map(d => `<div class="detail-row"><span>${d.label}</span><span>${d.value}</span></div>`).join('') +
-            '</div>';
-    }
-
-    // 构建匹配片段
-    let matchedHtml = '';
-    if (report.matched_segments && report.matched_segments.length > 0) {
-        matchedHtml = `
-            <div class="report-section">
-                <h3>🔴 重复/相似片段</h3>
-                <p class="report-section-desc">以下片段与数据库存在相似匹配，建议进行改写或正确引用</p>
-                ${report.matched_segments.map(seg => `
-                    <div class="matched-segment">
-                        <div class="matched-text">${escapeHtml(seg.text || '')}</div>
-                        <div class="matched-meta">
-                            <span class="matched-similarity">相似度：${seg.similarity || 0}%</span>
-                            <span class="matched-source">📚 ${seg.source || ''}</span>
-                            <span class="matched-position">📍 ${seg.position || ''}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>`;
-    }
-
-    // 构建来源
-    let sourcesHtml = '';
-    if (report.sources && report.sources.length > 0) {
-        sourcesHtml = `
-            <div class="report-section">
-                <h3>📚 可能来源出处</h3>
-                <ul class="source-list">
-                    ${report.sources.map(s => `<li class="source-item">${s}</li>`).join('')}
-                </ul>
-            </div>`;
-    }
-
-    // 构建建议
-    let aiSuggHtml = '';
+    var aiSuggHtml = '';
     if (report.ai_suggestions && report.ai_suggestions.length > 0) {
-        aiSuggHtml = `
-            <div class="report-section">
-                <h3>💡 AI检测建议</h3>
-                <ul class="suggestion-list">
-                    ${report.ai_suggestions.map(s => `<li class="suggestion-item">${s}</li>`).join('')}
-                </ul>
-            </div>`;
+        aiSuggHtml = '<div class="report-section"><h3>💡 AI检测建议</h3><ul class="suggestion-list">' +
+            report.ai_suggestions.map(function(s){return '<li class="suggestion-item">'+s+'</li>';}).join('') +
+            '</ul></div>';
     }
-
-    let plagSuggHtml = '';
+    var plagSuggHtml = '';
     if (report.plagiarism_suggestions && report.plagiarism_suggestions.length > 0) {
-        plagSuggHtml = `
-            <div class="report-section">
-                <h3>💡 查重优化建议</h3>
-                <ul class="suggestion-list">
-                    ${report.plagiarism_suggestions.map(s => `<li class="suggestion-item">${s}</li>`).join('')}
-                </ul>
-            </div>`;
+        plagSuggHtml = '<div class="report-section"><h3>💡 查重优化建议</h3><ul class="suggestion-list">' +
+            report.plagiarism_suggestions.map(function(s){return '<li class="suggestion-item">'+s+'</li>';}).join('') +
+            '</ul></div>';
     }
 
-    // 拼接完整HTML
-    container.innerHTML = `
-        <!-- 报告头部 -->
-        <div class="report-header" style="margin-top:30px;">
-            <div class="report-header-left">
-                <h2>📋 检测报告</h2>
-                <p class="report-meta">
-                    检测字数：${report.word_count || 0}字
-                    ${report.file_name ? ' | 文件：' + report.file_name : ''}
-                    | 模式：${report.detection_mode === 'ai_only' ? '仅AI检测' : report.detection_mode === 'plagiarism_only' ? '仅查重' : '双重检测'}
-                </p>
-            </div>
-            <div class="report-header-right">
-                ${report.record_id ? `<a href="/detect/report/${report.record_id}" class="btn btn-outline">📄 查看完整报告</a>` : ''}
-                <button class="btn btn-primary" onclick="window.location.reload()">🔄 新建检测</button>
-            </div>
-        </div>
+    c.innerHTML =
+        '<div class="report-header" style="margin-top:30px;">' +
+            '<div class="report-header-left">' +
+                '<h2>📋 检测报告</h2>' +
+                '<p class="report-meta">检测字数：' + (report.word_count||0) + '字 | ' +
+                (report.detection_mode==='ai_only'?'仅AI检测':report.detection_mode==='plagiarism_only'?'仅查重':'AI+查重') +
+                '</p>' +
+            '</div>' +
+            '<div class="report-header-right">' +
+                (report.record_id?'<a href="/detect/report/'+report.record_id+'" class="btn btn-outline">📄 完整报告</a>':'') +
+                '<button class="btn btn-primary" onclick="window.location.reload()">🔄 新建检测</button>' +
+            '</div>' +
+        '</div>' +
+        '<div class="score-hero">' +
+            '<div class="score-circle-large" style="--score:'+score+';">' +
+                '<span class="score-number">'+score+'</span><span class="score-unit">分</span>' +
+            '</div>' +
+            '<div class="score-label">总体原创得分</div>' +
+            '<div class="score-grade" style="color:'+gradeColor+';">'+gradeText+'</div>' +
+        '</div>' +
+        '<div class="score-breakdown">' +
+            '<div class="score-item-card">' +
+                '<div class="score-item-header"><span class="score-item-icon">🤖</span><h3>AI生成率</h3></div>' +
+                '<div class="score-item-value" style="color:'+aiColor+';">'+(report.ai_score||0)+'%</div>' +
+                '<p class="score-item-desc">AI撰写占比</p>' +
+                '<div class="score-bar"><div class="score-bar-fill" style="width:'+(report.ai_score||0)+'%;background:'+aiColor+';"></div></div>' +
+            '</div>' +
+            '<div class="score-item-card">' +
+                '<div class="score-item-header"><span class="score-item-icon">👤</span><h3>人工原创率</h3></div>' +
+                '<div class="score-item-value text-green">'+(report.human_score||0)+'%</div>' +
+                '<p class="score-item-desc">人工撰写占比</p>' +
+                '<div class="score-bar"><div class="score-bar-fill" style="width:'+(report.human_score||0)+'%;background:#059669;"></div></div>' +
+            '</div>' +
+            '<div class="score-item-card">' +
+                '<div class="score-item-header"><span class="score-item-icon">📊</span><h3>文本重复率</h3></div>' +
+                '<div class="score-item-value" style="color:'+plagColor+';">'+(report.plagiarism_score||0)+'%</div>' +
+                '<p class="score-item-desc">查重匹配率</p>' +
+                '<div class="score-bar"><div class="score-bar-fill" style="width:'+(report.plagiarism_score||0)+'%;background:'+plagColor+';"></div></div>' +
+            '</div>' +
+        '</div>' +
+        aiSuggHtml + plagSuggHtml +
+        '<div class="disclaimer-inline" style="margin-top:24px;">⚠️ <strong>重要提示：</strong>检测结果仅供参考，学校定稿以官方查重系统为准。文稿检测后自动删除。</div>';
 
-        <!-- 原创得分 -->
-        <div class="score-hero">
-            <div class="score-circle-large" style="--score: ${score};">
-                <span class="score-number">${score}</span>
-                <span class="score-unit">分</span>
-            </div>
-            <div class="score-label">总体原创得分</div>
-            <div class="score-grade" style="color:${gradeColor};">${gradeText}</div>
-        </div>
-
-        <!-- 分项得分 -->
-        <div class="score-breakdown">
-            <div class="score-item-card">
-                <div class="score-item-header">
-                    <span class="score-item-icon">🤖</span>
-                    <h3>AI生成率</h3>
-                </div>
-                <div class="score-item-value" style="color:${aiColor};">${report.ai_score || 0}%</div>
-                <p class="score-item-desc">AI撰写占比</p>
-                <div class="score-bar">
-                    <div class="score-bar-fill" style="width:${report.ai_score || 0}%; background:${aiColor};"></div>
-                </div>
-                ${aiDetailsHtml}
-            </div>
-
-            <div class="score-item-card">
-                <div class="score-item-header">
-                    <span class="score-item-icon">👤</span>
-                    <h3>人工原创率</h3>
-                </div>
-                <div class="score-item-value text-green">${report.human_score || 0}%</div>
-                <p class="score-item-desc">人工撰写占比</p>
-                <div class="score-bar">
-                    <div class="score-bar-fill" style="width:${report.human_score || 0}%; background: #10b981;"></div>
-                </div>
-            </div>
-
-            <div class="score-item-card">
-                <div class="score-item-header">
-                    <span class="score-item-icon">📊</span>
-                    <h3>文本重复率</h3>
-                </div>
-                <div class="score-item-value" style="color:${plagColor};">${report.plagiarism_score || 0}%</div>
-                <p class="score-item-desc">查重匹配率</p>
-                <div class="score-bar">
-                    <div class="score-bar-fill" style="width:${report.plagiarism_score || 0}%; background:${plagColor};"></div>
-                </div>
-            </div>
-        </div>
-
-        ${matchedHtml}
-        ${sourcesHtml}
-        ${aiSuggHtml}
-        ${plagSuggHtml}
-
-        <!-- AI降重入口 -->
-        <div class="report-section">
-            <div class="rewrite-cta">
-                <div class="rewrite-cta-text">
-                    <h3>✨ 需要降低重复率？</h3>
-                    <p>使用AI智能降重改写工具，一键优化您的论文</p>
-                </div>
-                <a href="/tools" class="btn btn-primary-lg">🚀 AI降重改写 →</a>
-            </div>
-        </div>
-
-        <!-- 免责声明 -->
-        <div class="disclaimer-inline" style="margin-top:24px;">
-            ⚠️ <strong>重要提示：</strong>本平台检测结果仅供参考，学校定稿请以官方查重系统为准。
-            用户上传文稿检测完成后自动删除，我们不会永久保存您的文稿。
-        </div>
-    `;
-
-    // 显示结果容器
-    container.style.display = 'block';
-
-    // 滚动到结果区域
-    container.scrollIntoView({ behavior: 'smooth' });
+    c.style.display = 'block';
+    c.scrollIntoView({ behavior: 'smooth' });
 }

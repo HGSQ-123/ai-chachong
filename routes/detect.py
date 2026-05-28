@@ -233,29 +233,30 @@ def api_detect_file():
         if user_id:
             user = db.get_user_by_id(user_id)
             if user:
-                deduct_result = BillingService.deduct_quota(user_id, word_count)
+                use_pro = request.form.get("use_pro", "0") == "1"
+                deduct_result = BillingService.deduct_quota(user_id, word_count, use_pro=use_pro)
                 if not deduct_result["success"]:
                     try:
                         os.remove(filepath)
                     except OSError:
                         pass
-                    return jsonify({"success": False, "message": deduct_result.get("error", "额度扣除失败")}), 400
+                    if deduct_result.get("need_upgrade"):
+                        return jsonify({
+                            "success": False, "need_upgrade": True,
+                            "message": "今日免费次数已用完，请使用Pro版或明天再来",
+                            "quota_info": BillingService.get_available_quota(user),
+                        }), 402
+                    if deduct_result.get("need_pay"):
+                        return jsonify({
+                            "success": False, "need_pay": True,
+                            "shortage": deduct_result["shortage"],
+                            "cost": deduct_result["cost"],
+                            "message": f"Pro额度不足，还差{deduct_result['shortage']}字，需充值约¥{deduct_result['cost']}",
+                            "quota_info": BillingService.get_available_quota(user),
+                        }), 402
+                    return jsonify({"success": False, "message": "额度扣除失败"}), 400
 
                 billing_result = deduct_result
-
-                if deduct_result["extra_needed"] > 0:
-                    try:
-                        os.remove(filepath)
-                    except OSError:
-                        pass
-                    return jsonify({
-                        "success": False,
-                        "need_pay": True,
-                        "message": f"您的免费额度不足，超出{deduct_result['extra_needed']}字需要付费{deduct_result['extra_cost']}元",
-                        "extra_words": deduct_result["extra_needed"],
-                        "extra_cost": deduct_result["extra_cost"],
-                        "quota_info": BillingService.get_available_quota(user),
-                    }), 402
 
         # 执行双重检测
         ai_result = AIDetector.detect(text)

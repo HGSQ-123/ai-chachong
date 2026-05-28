@@ -389,7 +389,7 @@ def api_register():
         from config import config
         return jsonify({
             "success": True,
-            "message": f"注册成功！首次检测免费{invite_bonus}",
+            "message": f"注册成功！每天{config.DAILY_FREE_DETECTIONS}次免费检测{invite_bonus}",
             "redirect": url_for("main.index"),
             "referral_code": user_code,
         })

@@ -50,7 +50,7 @@ class Config:
     FILE_CLEANUP_SECONDS = int(os.getenv("FILE_CLEANUP_HOURS", 1)) * 3600
 
     # ==================== 充值额度配置（元/千字） ====================
-    # 基础单价：0.5元/1000字
+    # 基础单价：0.49元/千字
     CREDIT_PRICE_PER_K = float(os.getenv("CREDIT_PRICE_PER_K", 0.49))
     
     # 充值套餐（金额 → 字数）
@@ -112,7 +112,7 @@ class Config:
     BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")  # Brevo HTTP API（Render无SMTP端口时使用）
     RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")  # Resend HTTP API（更简单，100封/天免费）
     SITE_NAME = os.getenv("SITE_NAME", "AI查重检测平台")
-    SITE_DESCRIPTION = os.getenv("SITE_DESCRIPTION", "专业AI生成率检测与论文重复率查重平台")
+    SITE_DESCRIPTION = os.getenv("SITE_DESCRIPTION", "专业AI检测与论文查重平台")
     SITE_DOMAIN = os.getenv("SITE_DOMAIN", "https://ai-chachong.onrender.com")
     CONTACT_EMAIL = os.getenv("CONTACT_EMAIL", "support@aichachong.com")
 

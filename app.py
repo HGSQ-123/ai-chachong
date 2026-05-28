@@ -71,7 +71,7 @@ def create_app():
             "contact_email": config.CONTACT_EMAIL,
             "current_user_data": user_data,
             "announcement": config.ANNOUNCEMENT_TEXT if config.ANNOUNCEMENT_ENABLED else "",
-            "free_quota_words": config.FREE_QUOTA_WORDS,
+            "daily_free_count": config.DAILY_FREE_DETECTIONS,
             "member_monthly_price": config.MEMBER_MONTHLY_PRICE,
             "member_monthly_quota": config.MEMBER_MONTHLY_QUOTA,
         }
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"  {config.SITE_NAME} - 启动中...")
     print(f"  访问地址: http://localhost:{port}")
-    print(f"  免费额度: {config.FREE_QUOTA_WORDS}字/新用户")
+    print(f"  每日免费: {config.DAILY_FREE_DETECTIONS}次/天")
     print(f"  会员价格: {config.MEMBER_MONTHLY_PRICE}元/月")
     print("=" * 60)
     app.run(

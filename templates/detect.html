@@ -35,7 +35,7 @@
         </div>
         {% elif not user %}
         <div class="quota-info-bar">
-            <p>💡 <a href="{{ url_for('auth.login_page') }}">登录</a>后可享受{{ free_quota_words }}字免费额度，<a href="{{ url_for('auth.register_page') }}">立即注册</a></p>
+            <p>💡 <a href="{{ url_for('auth.login_page') }}">登录</a>后可享受每天{{ daily_free_count }}次免费检测，<a href="{{ url_for('auth.register_page') }}">立即注册</a></p>
         </div>
         {% endif %}
 

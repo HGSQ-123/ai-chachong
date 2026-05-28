@@ -139,7 +139,7 @@ def api_config_status():
             "price": f"¥{config.CREDIT_PRICE_PER_K}/千字",
         },
         "pricing": {
-            "free_quota": config.FREE_QUOTA_WORDS,
+            "free_quota": config.DAILY_FREE_DETECTIONS,
             "member_price": config.MEMBER_MONTHLY_PRICE,
             "credit_price": config.CREDIT_PRICE_PER_K,
             "packages": config.RECHARGE_PACKAGES,

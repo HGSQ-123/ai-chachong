@@ -76,7 +76,7 @@ def api_get_quota():
     return jsonify({
         "success": True,
         "quota": quota_info,
-        "free_limit": config.FREE_QUOTA_WORDS,
+        "free_limit": config.DAILY_FREE_DETECTIONS,
         "member_limit": config.MEMBER_MONTHLY_QUOTA,
     })
 
